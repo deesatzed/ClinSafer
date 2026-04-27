@@ -107,6 +107,18 @@ uvicorn interactive_demo:app --host 0.0.0.0 --port $PORT
 
 GitHub stores the repo; a dynamic FastAPI app still needs a runtime such as Render, Railway, Fly.io, or Codespaces.
 
+### Run From GitHub Codespaces
+
+1. Open the repository on GitHub.
+2. Click `Code` → `Codespaces` → `Create codespace on main`.
+3. In the Codespaces terminal:
+
+```bash
+python interactive_demo.py
+```
+
+4. Open the forwarded `8001` port when prompted.
+
 ### Optional: LLM-Augmented Detection
 
 The engine works in pure regex mode by default. To enable LLM-augmented detection (catches novel phrasings regex misses):
