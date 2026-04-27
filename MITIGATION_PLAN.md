@@ -1,0 +1,242 @@
+# Mitigation Plan: Dynamic Boundary Intelligence
+
+## Purpose
+
+This plan updates the demo and implementation direction after reviewing the local `hcc_synth_1` stigmergic repo and `vam-satzed` VAMS memory repo.
+
+The mitigation goal is not to make the app a more aggressive AI doctor. The goal is to make the system better at:
+
+- knowing what it does not know,
+- separating patient statements from clinical facts,
+- remembering prior boundary failures,
+- learning which missing facts matter,
+- reducing avoidable physician routing and churn,
+- and preserving strict governance before learned patterns change production behavior.
+
+## Mitigation Layers
+
+### 1. Current Deterministic Controls
+
+Already active in `ver2`:
+
+- MUD map for missing, uncertain, distorted, contradictory, objective-needed, and remote-unknowable facts.
+- CLEAR next-question selection.
+- Black Swan Guardrails for assumption failure and autonomy caps.
+- Statement-vs-fact display in CEO Mode.
+- Autonomy boundary showing allowed and blocked actions.
+- Business impact panel for safety, revenue, churn, physician efficiency, and regulatory value.
+
+Mitigation role:
+
+> Prevent unsafe action in the current case.
+
+### 2. Stigmergic Boundary Trace
+
+Borrowed from `hcc_synth_1`:
+
+- multi-region shared trace field,
+- different decay rates by signal type,
+- accumulation of repeated weak signals,
+- persistence of unresolved source conflict or nonresponse,
+- alert-fatigue controls that do not suppress critical events.
+
+Recommended app layer:
+
+```text
+BoundaryTraceField
+  claims
+  objective
+  source_conflict
+  social_workflow
+  temporal_staleness
+  outcome_feedback
+```
+
+Mitigation role:
+
+> Stop weak but repeated uncertainty signals from disappearing between turns.
+
+### 3. Boundary Self-Model
+
+Borrowed from `hcc_synth_1` patient self-modeling:
+
+- online baselines,
+- Welford mean/variance,
+- deviation and trend detection,
+- sparse peak detection.
+
+Recommended app translation:
+
+```text
+BoundarySelfModel by pathway:
+  refill with chronic disease
+  pediatric caregiver report
+  chest discomfort with reassurance
+  mental-health minimization
+  post-discharge drift
+  telemedicine-only limitation
+```
+
+Mitigation role:
+
+> Detect when a case’s uncertainty shape deviates from the normal safe pathway, even if no single rule screams.
+
+### 4. Falsifier Planning
+
+Borrowed from `hcc_synth_1` falsifier engine:
+
+- generate dangerous hypothesis,
+- generate plausible alternatives,
+- ask what evidence would disprove danger,
+- ask what evidence would disprove reassurance,
+- choose the lowest-burden next test or question.
+
+Mitigation role:
+
+> Convert “we are worried” into “here is what would change the decision.”
+
+CEO Mode display target:
+
+```text
+What Would Change The Decision?
+```
+
+### 5. VAMS Near-Miss Recall
+
+Borrowed from `vam-satzed`:
+
+- sparse Hopfield attractor memory,
+- Hebbian strengthening,
+- anti-Hebbian weakening,
+- associative recall,
+- pattern completion,
+- typed memory edges.
+
+Recommended app layer:
+
+```text
+ClinicalBoundaryEncoder
+  -> sparse case signature
+  -> AssociativeCaseMemory
+  -> near-miss analogue
+  -> missing nodes and falsifiers
+  -> deterministic validator
+```
+
+Mitigation role:
+
+> Remember the shape of prior near misses from partial cues, especially when the relevant pattern is uncertainty rather than diagnosis.
+
+Safety boundary:
+
+- Memory can propose candidate risks, questions, and falsifiers.
+- Memory cannot authorize clinical action.
+- Memory-only recall cannot create a T0/T1 hard stop without deterministic support.
+- Every recalled analogue needs confidence, evidence, and provenance.
+- PHI must be excluded or de-identified.
+
+### 6. Governed Template Promotion
+
+AI and memory can suggest:
+
+- new nodes,
+- new node ranges,
+- new distributions,
+- new expert-system rules,
+- new domain templates,
+- new near-miss archetypes.
+
+They cannot directly promote themselves into production behavior.
+
+Promotion requires:
+
+- deterministic schema validation,
+- source/evidence validation,
+- simulation cases,
+- clinician/admin review,
+- outcome monitoring,
+- rollback path.
+
+Mitigation role:
+
+> Let the system learn without turning production medicine into uncontrolled online learning.
+
+### 7. Business And Churn Mitigation
+
+Safety and business goals align when the system knows the specific blocker.
+
+Revenue and churn levers:
+
+- ask one targeted question before expensive routing,
+- preserve safe automation when the gap is easy to close,
+- explain why a visit or clinician review is needed,
+- avoid vague alarming escalation language,
+- reduce repetitive low-yield questioning,
+- route with a boundary map instead of a raw transcript.
+
+Mitigation role:
+
+> Reduce avoidable friction while increasing persistence around unresolved high-consequence uncertainty.
+
+## Updated Demo Requirements
+
+The CEO demo should show:
+
+1. A routine-looking case.
+2. Statement-vs-fact separation.
+3. Missing, uncertain, stale, contradictory, or socially distorted signals.
+4. Autonomy cap.
+5. Next best question.
+6. Mitigation plan.
+7. Future memory/tracing upgrade:
+   - stigmergic boundary trace,
+   - VAMS near-miss recall,
+   - governed template promotion.
+
+The app now includes a `Mitigation Plan` analysis section in `interactive_demo.py`.
+
+## Proof Harness
+
+Run:
+
+```bash
+python scripts/prove_mitigation_flow.py
+```
+
+This uses the same JRE, BSG, and interactive-demo section builders used by the browser demo. It compares:
+
+- `CEO-001-stale-ace-refill-ckd-nsaid`
+- `RF-002-good-refill-readyish`
+
+Expected proof behavior:
+
+- the hero refill case is capped, blocks autonomous refill, lights up boundary traces, and recalls a refill near-miss pattern;
+- the clean refill control is allowed with audit, has no blocked actions, and recalls a clean refill analogue;
+- both cases include the five mitigation layers:
+  - current deterministic controls,
+  - stigmergic boundary trace,
+  - VAMS near-miss recall,
+  - governed template promotion,
+  - business mitigation.
+
+## Implementation Order
+
+1. Keep deterministic controls as the production safety base.
+2. Add visible mitigation planning to the demo.
+3. Add a deterministic `ClinicalBoundaryEncoder`.
+4. Seed synthetic near-miss memories for VAMS-style recall.
+5. Add `BoundaryTraceField` for per-case and cross-case learning traces.
+6. Add falsifier planning.
+7. Add clinician feedback capture tied to memory acceptance/rejection.
+8. Add governance queue for proposed rules/templates.
+9. Add dashboard metrics for:
+   - avoidable routing,
+   - clarification yield,
+   - abandonment after risk,
+   - confirmed near misses,
+   - false-positive recalls,
+   - template-promotion outcomes.
+
+## Interview Line
+
+> The learning layer should not learn to practice medicine autonomously. It should learn where interpretation boundaries fail, which missing facts matter, which clarification questions have yield, and which near-miss patterns deserve governed promotion.

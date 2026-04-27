@@ -1,0 +1,15 @@
+[project]
+name = "judgment-readiness-engine"
+version = "0.1.0"
+description = "Prototype clinical Unknowns Intelligence / Judgment Readiness module"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+api = ["fastapi>=0.100", "uvicorn>=0.20", "pydantic>=2.0"]
+llm = ["httpx>=0.24"]
+dev = ["pytest>=7.0"]
+all = ["fastapi>=0.100", "uvicorn>=0.20", "pydantic>=2.0", "httpx>=0.24", "pytest>=7.0"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
