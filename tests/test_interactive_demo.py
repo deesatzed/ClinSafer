@@ -123,6 +123,8 @@ class TestPageServing:
         assert "function loadCases" in html
         assert "function selectCaseById" in html
         assert "function addDialogueTurn" in html
+        assert "function importTranscript" in html
+        assert "function parseTranscript" in html
         assert "function collectEncounterStatements" in html
         assert "function submitAllFeedback" in html
         assert "function suggestRule" in html
@@ -146,6 +148,8 @@ class TestPageServing:
         html = resp.text
         assert "Live encounter input" in html
         assert "Add Dialogue" in html
+        assert "Paste Transcript" in html
+        assert "Replace Encounter" in html
         assert "dialogue-question-text" in html
         assert "dialogue-concept" in html
 
@@ -271,6 +275,56 @@ class TestAnalysisEndpoint:
         assert recs["clinician_handoff"]
         assert recs["ai_processing"]["prompt_contract"]
         assert recs["governance_actions"]
+
+    def test_pasted_real_encounter_without_concepts_is_analyzed(self):
+        payload = {
+            "case_id": "paste-real-encounter",
+            "patient_context": {
+                "age": 59,
+                "chief_concern": "indigestion and fatigue",
+                "domain": "chest_discomfort",
+                "literacy_hint": "medium",
+                "language_barrier": False,
+                "has_caregiver": False,
+                "modality": "text",
+                "known_conditions": ["diabetes", "hypertension"],
+            },
+            "statements": [
+                {
+                    "question": "Patient statement",
+                    "answer": "No chest pain. It is just tight indigestion when I walk, but I cannot afford the ER.",
+                    "concept": None,
+                    "source": "patient",
+                    "metadata": {},
+                },
+                {
+                    "question": "Does it change with activity?",
+                    "answer": "It starts when I carry laundry upstairs and gets better if I sit.",
+                    "concept": None,
+                    "source": "patient",
+                    "metadata": {},
+                },
+                {
+                    "question": "Any shortness of breath?",
+                    "answer": "Not really. I just slow down so it does not get bad.",
+                    "concept": None,
+                    "source": "patient",
+                    "metadata": {},
+                },
+            ],
+            "ground_truth": {},
+        }
+        resp = client.post("/demo/analyze", json=payload)
+        assert resp.status_code == 200
+        data = resp.json()
+        concepts = {
+            obs["concept"]
+            for obs in _section(data, "observations")["data"]["observations"]
+        }
+        assert "symptom_quality" in concepts
+        assert "dyspnea" in concepts
+        assert data["combined_state"] in {"ESCALATE", "HOLD_AND_VERIFY"}
+        assert data["recommendations"]["critical_evidence"]
 
     def test_mitigation_plan_section_has_learning_layers(self):
         case = BASE_CASES[0]

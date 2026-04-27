@@ -385,7 +385,7 @@ class JudgmentReadinessEngine:
         observations: List[Observation] = []
         domain = case.patient_context.domain
         for st in case.statements:
-            concept = st.concept or infer_concept(st.question)
+            concept = st.concept or infer_concept(f"{st.question} {st.answer}")
             tags: List[str] = []
             trace: List[str] = []
             raw = st.answer.strip()
@@ -1092,8 +1092,8 @@ def normalize_answer(raw: str) -> Any:
     return raw_l
 
 
-def infer_concept(question: str) -> Optional[str]:
-    q = question.lower()
+def infer_concept(text: str) -> Optional[str]:
+    q = text.lower()
     mappings = [
         ("blood pressure", "home_bp_number"),
         ("glucose", "glucose_number"),
@@ -1105,8 +1105,16 @@ def infer_concept(question: str) -> Optional[str]:
         ("fever", "fever_measured"),
         ("chest", "symptom_quality"),
         ("pressure", "symptom_quality"),
+        ("tight", "symptom_quality"),
+        ("indigestion", "symptom_quality"),
+        ("heartburn", "symptom_quality"),
+        ("activity", "exertional_component"),
         ("walk", "exertional_tolerance"),
+        ("upstairs", "exertional_component"),
         ("stairs", "exertional_component"),
+        ("shortness of breath", "dyspnea"),
+        ("breath", "dyspnea"),
+        ("slow down", "dyspnea"),
         ("sentence", "sentence_test"),
         ("pregnant", "pregnancy_status"),
         ("vomit", "vomiting"),

@@ -1986,6 +1986,26 @@ body {
   font-size: 12px;
   cursor: pointer;
 }
+.paste-panel {
+  display: none;
+  background: #fffdf7;
+  border: 1px solid rgba(245,158,11,0.28);
+  border-radius: 8px;
+  padding: 14px;
+  margin: 0 0 14px 0;
+}
+.paste-panel textarea {
+  width: 100%;
+  min-height: 150px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 13px;
+  color: var(--text);
+  background: #ffffff;
+  resize: vertical;
+}
+.paste-hint { font-size: 12px; color: var(--text-dim); margin-bottom: 8px; }
 .dialogue-a {
   font-size: 14px;
   padding: 8px 12px;
@@ -2678,9 +2698,19 @@ textarea.suggestion-edit {
   <div id="encounter-banner" class="encounter-banner"></div>
   <div class="encounter-layout">
     <div>
+      <div id="paste-panel" class="paste-panel">
+        <div class="paste-hint"><strong>Paste real encounter text.</strong> Supports Q/A pairs, Clinician/Patient labels, or alternating prompt/response lines. Imported turns become editable before analysis.</div>
+        <textarea id="paste-transcript" placeholder="Example:\nClinician: Do you have chest pain?\\nPatient: No, just tight indigestion when I walk.\nClinician: Any shortness of breath?\\nPatient: Not really, I slow down so it does not get bad."></textarea>
+        <div class="btn-row" style="margin-top:10px;">
+          <button class="btn btn-secondary btn-sm" onclick="togglePastePanel(false)">Cancel</button>
+          <button class="btn btn-secondary btn-sm" onclick="importTranscript(false)">Append To Encounter</button>
+          <button class="btn btn-primary btn-sm" onclick="importTranscript(true)">Replace Encounter</button>
+        </div>
+      </div>
       <div id="dialogue-area" class="dialogue-area"></div>
       <div class="btn-row">
         <button class="btn btn-secondary" onclick="showScreen('cases')">Back to Cases</button>
+        <button class="btn btn-secondary" onclick="togglePastePanel(true)">Paste Transcript</button>
         <button class="btn btn-secondary" onclick="addDialogueTurn()">Add Dialogue</button>
         <button id="analyze-btn" class="btn btn-primary" onclick="analyzeEncounter()">Analyze This Encounter</button>
       </div>
@@ -3050,6 +3080,83 @@ function removeDialogueTurn(btn) {
   const pair = btn.closest('.dialogue-pair');
   if (pair) pair.remove();
   reindexDialogueTurns();
+}
+
+function togglePastePanel(show) {
+  const panel = document.getElementById('paste-panel');
+  if (!panel) return;
+  panel.style.display = show ? 'block' : 'none';
+  if (show) {
+    const ta = document.getElementById('paste-transcript');
+    if (ta) ta.focus();
+  }
+}
+
+function cleanSpeakerLine(line) {
+  return line.replace(/^\\s*(clinician|doctor|provider|nurse|assistant|system|ai|patient|pt|caregiver|daughter|son|mom|mother|father|device|chart)\\s*[:\\-]\\s*/i, '').trim();
+}
+
+function speakerForLine(line) {
+  const m = line.match(/^\\s*([A-Za-z ]{1,20})\\s*[:\\-]\\s*/);
+  if (!m) return '';
+  const label = m[1].trim().toLowerCase();
+  if (['patient', 'pt'].includes(label)) return 'patient';
+  if (['caregiver', 'daughter', 'son', 'mom', 'mother', 'father'].includes(label)) return 'caregiver';
+  if (['device'].includes(label)) return 'device';
+  if (['chart'].includes(label)) return 'chart';
+  if (['clinician', 'doctor', 'provider', 'nurse', 'assistant', 'system', 'ai'].includes(label)) return 'clinician';
+  return '';
+}
+
+function parseTranscript(text) {
+  const lines = String(text || '').split(/\\r?\\n/).map(x => x.trim()).filter(Boolean);
+  const turns = [];
+  let pendingQuestion = '';
+  for (const line of lines) {
+    const inlineQa = line.match(/^\\s*(?:Q(?:uestion)?|Clinician|Doctor|Provider|Nurse|Assistant|AI|System)\\s*[:\\-]\\s*(.*?)\\s+\\bA(?:nswer)?\\s*[:\\-]\\s*(.*)$/i);
+    const qa = line.match(/^\\s*(?:Q(?:uestion)?|Clinician|Doctor|Provider|Nurse|Assistant|AI|System)\\s*[:\\-]\\s*(.*?)\\s*$/i);
+    const aa = line.match(/^\\s*(?:A(?:nswer)?|Patient|Pt|Caregiver|Daughter|Son|Mom|Mother|Father|Device|Chart)\\s*[:\\-]\\s*(.*)$/i);
+    const speaker = speakerForLine(line);
+    if (inlineQa) {
+      turns.push({ question: inlineQa[1].trim(), answer: inlineQa[2].trim(), concept: null, source: 'patient', metadata: {} });
+      pendingQuestion = '';
+    } else if (qa && !aa) {
+      pendingQuestion = cleanSpeakerLine(line);
+    } else if (aa) {
+      const source = speaker && speaker !== 'clinician' ? speaker : 'patient';
+      turns.push({ question: pendingQuestion || 'Patient statement', answer: aa[1].trim(), concept: null, source, metadata: {} });
+      pendingQuestion = '';
+    } else if (speaker === 'clinician') {
+      pendingQuestion = cleanSpeakerLine(line);
+    } else if (speaker) {
+      turns.push({ question: pendingQuestion || 'Patient statement', answer: cleanSpeakerLine(line), concept: null, source: speaker === 'clinician' ? 'patient' : speaker, metadata: {} });
+      pendingQuestion = '';
+    } else if (pendingQuestion) {
+      turns.push({ question: pendingQuestion, answer: line, concept: null, source: 'patient', metadata: {} });
+      pendingQuestion = '';
+    } else if (line.endsWith('?')) {
+      pendingQuestion = line;
+    } else {
+      turns.push({ question: 'Patient statement', answer: line, concept: null, source: 'patient', metadata: {} });
+    }
+  }
+  if (pendingQuestion) turns.push({ question: pendingQuestion, answer: '', concept: null, source: 'patient', metadata: {} });
+  return turns.filter(t => (t.question || t.answer) && t.answer !== '');
+}
+
+function importTranscript(replace) {
+  const ta = document.getElementById('paste-transcript');
+  const text = ta ? ta.value : '';
+  const parsed = parseTranscript(text);
+  if (!parsed.length) {
+    showToast('No dialogue turns found in pasted text.');
+    return;
+  }
+  const existing = replace ? [] : collectEncounterStatements();
+  currentCase.case_data.statements = existing.concat(parsed);
+  renderEncounter();
+  togglePastePanel(false);
+  showToast((replace ? 'Replaced' : 'Added') + ' ' + parsed.length + ' dialogue turn(s).');
 }
 
 function collectEncounterStatements() {
