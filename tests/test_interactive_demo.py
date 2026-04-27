@@ -119,6 +119,8 @@ class TestPageServing:
         assert "function renderAnalysis" in html
         assert "function loadCases" in html
         assert "function selectCaseById" in html
+        assert "function addDialogueTurn" in html
+        assert "function collectEncounterStatements" in html
         assert "function submitAllFeedback" in html
         assert "function suggestRule" in html
         assert "function suggestCase" in html
@@ -133,6 +135,14 @@ class TestPageServing:
         assert 'id="nav-learning"' in html
         assert "Overview" in html
         assert "Governance" in html
+
+    def test_encounter_page_has_live_edit_controls(self):
+        resp = client.get("/")
+        html = resp.text
+        assert "Live encounter input" in html
+        assert "Add Dialogue" in html
+        assert "dialogue-question-text" in html
+        assert "dialogue-concept" in html
 
     def test_page_contains_css(self):
         resp = client.get("/")

@@ -1747,6 +1747,16 @@ body {
   border-radius: var(--radius);
   padding: 20px;
 }
+.encounter-edit-note {
+  background: linear-gradient(135deg, #ecfdf5, #eff6ff);
+  border: 1px solid rgba(15,159,154,0.24);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+.encounter-edit-note strong { color: var(--text); }
 .dialogue-pair {
   margin-bottom: 16px;
   padding-bottom: 16px;
@@ -1758,6 +1768,10 @@ body {
   color: var(--accent);
   margin-bottom: 6px;
   font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 .dialogue-q .q-number { color: var(--text-dim); font-weight: 600; }
 .dialogue-q .concept-tag {
@@ -1767,6 +1781,42 @@ body {
   border-radius: 4px;
   color: var(--text-dim);
   margin-left: 6px;
+}
+.dialogue-question-text {
+  min-width: 180px;
+  outline: none;
+  border-radius: 4px;
+  padding: 1px 3px;
+}
+.dialogue-question-text:focus {
+  background: #ffffff;
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.dialogue-tools {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.dialogue-tools select,
+.dialogue-tools input {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 7px;
+  color: var(--text);
+  font-size: 12px;
+}
+.dialogue-tools input { min-width: 170px; }
+.dialogue-tools .remove-dialogue {
+  color: var(--red);
+  border: 1px solid rgba(216,59,76,0.25);
+  background: #fff7f8;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
 }
 .dialogue-a {
   font-size: 14px;
@@ -2418,6 +2468,7 @@ textarea.suggestion-edit {
       <div id="dialogue-area" class="dialogue-area"></div>
       <div class="btn-row">
         <button class="btn btn-secondary" onclick="showScreen('cases')">Back to Cases</button>
+        <button class="btn btn-secondary" onclick="addDialogueTurn()">Add Dialogue</button>
         <button id="analyze-btn" class="btn btn-primary" onclick="analyzeEncounter()">Analyze This Encounter</button>
       </div>
     </div>
@@ -2702,23 +2753,13 @@ function renderEncounter() {
   banner.innerHTML = bannerHtml;
 
   // Dialogue — Q&A pairs, answers are editable
-  let dHtml = '';
+  let dHtml = '<div class="encounter-edit-note"><strong>Live encounter input.</strong> Edit any question or answer, add real dialogue turns, then analyze. Blank concept fields are inferred from the question when possible.</div>';
   for (let i = 0; i < stmts.length; i++) {
     const s = stmts[i];
-    dHtml += '<div class="dialogue-pair">';
-    dHtml += '<div class="dialogue-q">';
-    dHtml += '<span class="q-number">' + (i + 1) + '.</span> ';
-    dHtml += esc(s.question || '');
-    if (s.concept) dHtml += ' <span class="concept-tag">' + esc(s.concept) + '</span>';
-    dHtml += '</div>';
-    dHtml += '<div class="dialogue-a" contenteditable="true" data-idx="' + i + '" data-source="' + esc(s.source || 'patient') + '">';
-    dHtml += esc(s.answer || '');
-    if (s.source && s.source !== 'patient') dHtml += ' <span class="source-tag">[' + esc(s.source) + ']</span>';
-    dHtml += '</div>';
-    dHtml += '</div>';
+    dHtml += renderDialoguePair(s, i);
   }
   if (!stmts.length) {
-    dHtml = '<div class="empty-state">No statements in this case.</div>';
+    dHtml += '<div class="empty-state">No statements in this case. Add dialogue below.</div>';
   }
   document.getElementById('dialogue-area').innerHTML = dHtml;
 
@@ -2739,6 +2780,73 @@ function renderEncounter() {
   sidebar.innerHTML = sideHtml;
 }
 
+function renderDialoguePair(s, i) {
+    let dHtml = '<div class="dialogue-pair" data-idx="' + i + '">';
+    dHtml += '<div class="dialogue-q">';
+    dHtml += '<span class="q-number">' + (i + 1) + '.</span> ';
+    dHtml += '<span class="dialogue-question-text" contenteditable="true">' + esc(s.question || '') + '</span>';
+    if (s.concept) dHtml += ' <span class="concept-tag">' + esc(s.concept) + '</span>';
+    dHtml += '</div>';
+    dHtml += '<div class="dialogue-a" contenteditable="true" data-idx="' + i + '" data-source="' + esc(s.source || 'patient') + '">';
+    dHtml += esc(s.answer || '');
+    if (s.source && s.source !== 'patient') dHtml += ' <span class="source-tag">[' + esc(s.source) + ']</span>';
+    dHtml += '</div>';
+    dHtml += '<div class="dialogue-tools">';
+    dHtml += '<label>Source <select class="dialogue-source"><option value="patient"' + ((s.source || 'patient') === 'patient' ? ' selected' : '') + '>patient</option><option value="caregiver"' + (s.source === 'caregiver' ? ' selected' : '') + '>caregiver</option><option value="device"' + (s.source === 'device' ? ' selected' : '') + '>device</option><option value="chart"' + (s.source === 'chart' ? ' selected' : '') + '>chart</option><option value="clinician"' + (s.source === 'clinician' ? ' selected' : '') + '>clinician</option></select></label>';
+    dHtml += '<label>Concept <input class="dialogue-concept" value="' + esc(s.concept || '') + '" placeholder="optional; inferred if blank"></label>';
+    dHtml += '<button class="remove-dialogue" onclick="removeDialogueTurn(this)">Remove</button>';
+    dHtml += '</div>';
+    dHtml += '</div>';
+    return dHtml;
+}
+
+function reindexDialogueTurns() {
+  document.querySelectorAll('#dialogue-area .dialogue-pair').forEach((pair, i) => {
+    pair.setAttribute('data-idx', i);
+    const qNum = pair.querySelector('.q-number');
+    if (qNum) qNum.textContent = (i + 1) + '.';
+    const answer = pair.querySelector('.dialogue-a');
+    if (answer) answer.setAttribute('data-idx', i);
+  });
+}
+
+function addDialogueTurn() {
+  const area = document.getElementById('dialogue-area');
+  const idx = document.querySelectorAll('#dialogue-area .dialogue-pair').length;
+  area.insertAdjacentHTML('beforeend', renderDialoguePair({
+    question: 'Add the intake question or clinician prompt here',
+    answer: 'Add the patient, caregiver, device, or chart statement here',
+    concept: '',
+    source: 'patient'
+  }, idx));
+  reindexDialogueTurns();
+}
+
+function removeDialogueTurn(btn) {
+  const pair = btn.closest('.dialogue-pair');
+  if (pair) pair.remove();
+  reindexDialogueTurns();
+}
+
+function collectEncounterStatements() {
+  const stmts = [];
+  document.querySelectorAll('#dialogue-area .dialogue-pair').forEach((pair) => {
+    const qEl = pair.querySelector('.dialogue-question-text');
+    const aEl = pair.querySelector('.dialogue-a');
+    const sourceEl = pair.querySelector('.dialogue-source');
+    const conceptEl = pair.querySelector('.dialogue-concept');
+    const question = qEl ? qEl.textContent.trim() : '';
+    const answer = aEl ? aEl.textContent.replace(/\\[.*?\\]$/, '').trim() : '';
+    const source = sourceEl ? sourceEl.value : 'patient';
+    const concept = conceptEl && conceptEl.value.trim() ? conceptEl.value.trim() : null;
+    if (question || answer) {
+      stmts.push({ question, answer, concept, source, metadata: {} });
+    }
+  });
+  currentCase.case_data.statements = stmts;
+  return stmts;
+}
+
 // ---------------------------------------------------------------------------
 // Screen 3: Analyze encounter
 // ---------------------------------------------------------------------------
@@ -2747,12 +2855,8 @@ async function analyzeEncounter() {
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span> Analyzing...';
 
-  // Read potentially edited answers
-  const stmts = currentCase.case_data.statements.map((s, i) => {
-    const el = document.querySelector('.dialogue-a[data-idx="' + i + '"]');
-    const text = el ? el.textContent.replace(/\\[.*?\\]$/, '').trim() : s.answer;
-    return { question: s.question, answer: text, concept: s.concept, source: s.source, metadata: s.metadata || {} };
-  });
+  // Read edited and newly added dialogue turns
+  const stmts = collectEncounterStatements();
 
   const payload = {
     case_id: currentCase.case_id,
@@ -3216,11 +3320,7 @@ async function renderLLMSection(data) {
 }
 
 function buildLLMPayloadFromCurrentCase() {
-  const stmts = currentCase.case_data.statements.map((s, i) => {
-    const ansEl = document.querySelector('.dialogue-a[data-idx="' + i + '"]');
-    const text = ansEl ? ansEl.textContent.replace(/\\[.*?\\]$/, '').trim() : s.answer;
-    return { question: s.question, answer: text, concept: s.concept, source: s.source, metadata: s.metadata || {} };
-  });
+  const stmts = collectEncounterStatements();
   return {
     case_id: currentCase.case_id,
     patient_context: currentCase.case_data.patient_context,
