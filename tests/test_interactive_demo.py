@@ -150,8 +150,23 @@ class TestPageServing:
         assert "Add Dialogue" in html
         assert "Paste Transcript" in html
         assert "Replace Encounter" in html
+        assert "Live input parsed" in html
+        assert "Processing Transparency" in html
         assert "dialogue-question-text" in html
         assert "dialogue-concept" in html
+
+    def test_custom_builder_exposes_top_telemedicine_domains(self):
+        resp = client.get("/")
+        html = resp.text
+        for domain in [
+            "mental_health",
+            "uri_sinus_throat",
+            "gerd_dyspepsia",
+            "skin_infection",
+            "obesity_metabolic",
+            "vaginal_sti",
+        ]:
+            assert html.count(f'value="{domain}"') >= 2
 
     def test_page_contains_css(self):
         resp = client.get("/")
@@ -336,7 +351,7 @@ class TestAnalysisEndpoint:
         assert "Stigmergic boundary trace" in layers
         assert "VAMS near-miss recall" in layers
         assert "Governed template promotion" in layers
-        assert "Business mitigation" in layers
+        assert "Operational mitigation" in layers
         assert mitigation["data"]["recalled_pattern"]
         assert mitigation["data"]["trace_regions"]
         assert mitigation["data"]["falsifiers"]

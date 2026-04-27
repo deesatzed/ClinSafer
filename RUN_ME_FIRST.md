@@ -2,7 +2,7 @@
 
 ## Judgment Readiness demo
 
-Primary CEO demo:
+Primary interview demo:
 
 ```bash
 cd judgment_readiness_engine
@@ -15,7 +15,20 @@ Open:
 http://localhost:8001
 ```
 
-Show `CEO Mode`, then run the hero refill case through `Business Impact` and `Mitigation Plan`.
+Open `FINAL_DOCTRONIC_INTERVIEW_READINESS.md` first for the current talk track.
+
+Recommended live path:
+
+1. Overview.
+2. `Show Cost-Fear Case` or `Run Hero Refill Case`.
+3. Optional: `Paste Transcript` with real encounter text.
+4. `Analyze This Encounter`.
+5. `Statement vs Fact`.
+6. `Provenance & Authority`.
+7. `Known Unknowns Map`.
+8. `Autonomy Boundary`.
+9. `Final Recommendations`.
+10. Governance Review only if there is time.
 
 Classic CLI/static demo:
 
@@ -62,6 +75,7 @@ This should print `proof: PASS` and show that the hero refill case blocks autono
 
 Main files to show in an interview:
 
+- `FINAL_DOCTRONIC_INTERVIEW_READINESS.md`
 - `INTERVIEW_BRIEF.md`
 - `MITIGATION_PLAN.md`
 - `DOCTRONIC_INTERVIEW_STRATEGY.md`

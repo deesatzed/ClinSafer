@@ -1,5 +1,7 @@
 # Doctronic Demo Implementation Plan
 
+Status: historical implementation plan. For the current live demo talk track and final review, use `FINAL_DOCTRONIC_INTERVIEW_READINESS.md`. The live app now avoids a separate "CEO Mode" label and no longer uses a fixed "Business Impact" section as the primary story.
+
 ## Purpose
 
 Enhance the Judgment Readiness Engine demo into a focused interview showpiece for Doctronic's CEO.

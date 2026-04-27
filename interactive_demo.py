@@ -1312,7 +1312,7 @@ def _build_mitigation_plan_section(
             ],
         },
         {
-            "layer": "Business mitigation",
+            "layer": "Operational mitigation",
             "purpose": "Protect safety while reducing avoidable routing, abandonment, and trust loss.",
             "actions": [
                 "Ask the smallest useful next question when the gap is fixable.",
@@ -2006,6 +2006,16 @@ body {
   resize: vertical;
 }
 .paste-hint { font-size: 12px; color: var(--text-dim); margin-bottom: 8px; }
+.parse-proof {
+  background: #eefbf8;
+  border: 1px solid rgba(15,118,110,0.18);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin: 0 0 12px 0;
+  color: var(--text);
+  font-size: 13px;
+}
+.parse-proof strong { color: var(--teal); }
 .dialogue-a {
   font-size: 14px;
   padding: 8px 12px;
@@ -2672,7 +2682,7 @@ textarea.suggestion-edit {
       <p>At scale, subtle failures often come from silence, stale evidence, denial reliability, or patient-shaped conversations.</p>
     </div>
     <div class="ceo-panel">
-      <h3>Business Value</h3>
+      <h3>Operating Leverage</h3>
       <p>One targeted clarification can preserve safe automation, reduce avoidable physician review, and explain paid routing more clearly.</p>
     </div>
     <div class="ceo-panel">
@@ -2727,7 +2737,7 @@ textarea.suggestion-edit {
   </div>
   <div class="demo-proof-callout">
     <div>
-      <div class="proof-title">Demo proof: processing transparency is now explicit.</div>
+      <div class="proof-title">Processing Transparency</div>
       <div class="proof-subtitle">Section 2 labels curated rules, AI candidates, learned priors, memory recall, and the ensemble autonomy governor.</div>
     </div>
     <span class="authority-chip authority-Enforced">Transparency layer active</span>
@@ -2782,13 +2792,27 @@ textarea.suggestion-edit {
       <p style="font-size:13px;color:var(--text-dim);margin-bottom:12px;">LLM generates a synthetic case that stress-tests a gap.</p>
       <div style="display:flex;gap:8px;margin-bottom:10px;">
         <select id="suggest-domain" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:6px;color:var(--text);font-size:13px;flex:1;">
+          <option value="adhd_behavioral_med">ADHD / Behavioral Medication</option>
+          <option value="asthma_allergy">Asthma / Allergy</option>
           <option value="chest_discomfort">Chest Discomfort</option>
+          <option value="diabetes_hyperglycemia">Diabetes / Hyperglycemia</option>
           <option value="dyspnea_respiratory">Dyspnea/Respiratory</option>
-          <option value="med_refill_hypertension">Med Refill/Hypertension</option>
-          <option value="uti_symptoms">UTI Symptoms</option>
-          <option value="rash">Rash</option>
-          <option value="diabetes_hyperglycemia">Diabetes/Hyperglycemia</option>
+          <option value="eye_ear">Eye / Ear</option>
+          <option value="followup_lab_review">Follow-up / Lab Review</option>
+          <option value="general_med_management">General Medication Management</option>
+          <option value="gerd_dyspepsia">GERD / Dyspepsia</option>
+          <option value="gi_symptoms">GI Symptoms</option>
           <option value="headache_migraine">Headache/Migraine</option>
+          <option value="med_refill_hypertension">Med Refill/Hypertension</option>
+          <option value="mental_health">Mental Health</option>
+          <option value="musculoskeletal_pain">Musculoskeletal Pain</option>
+          <option value="obesity_metabolic">Obesity / Metabolic Care</option>
+          <option value="uti_symptoms">UTI Symptoms</option>
+          <option value="routine_dermatology">Routine Dermatology</option>
+          <option value="rash">Rash</option>
+          <option value="skin_infection">Skin Infection</option>
+          <option value="uri_sinus_throat">URI / Sinus / Throat</option>
+          <option value="vaginal_sti">Vaginal / STI</option>
         </select>
         <button class="btn btn-secondary btn-sm" id="suggest-case-btn" onclick="suggestCase()">Generate Case</button>
       </div>
@@ -2810,13 +2834,27 @@ textarea.suggestion-edit {
       <div>
         <label>Domain</label>
         <select id="builder-domain">
+          <option value="adhd_behavioral_med">ADHD / Behavioral Medication</option>
+          <option value="asthma_allergy">Asthma / Allergy</option>
           <option value="chest_discomfort">Chest Discomfort</option>
+          <option value="diabetes_hyperglycemia">Diabetes / Hyperglycemia</option>
           <option value="dyspnea_respiratory">Dyspnea/Respiratory</option>
-          <option value="med_refill_hypertension">Med Refill/Hypertension</option>
-          <option value="uti_symptoms">UTI Symptoms</option>
-          <option value="rash">Rash</option>
-          <option value="diabetes_hyperglycemia">Diabetes/Hyperglycemia</option>
+          <option value="eye_ear">Eye / Ear</option>
+          <option value="followup_lab_review">Follow-up / Lab Review</option>
+          <option value="general_med_management">General Medication Management</option>
+          <option value="gerd_dyspepsia">GERD / Dyspepsia</option>
+          <option value="gi_symptoms">GI Symptoms</option>
           <option value="headache_migraine">Headache/Migraine</option>
+          <option value="med_refill_hypertension">Med Refill/Hypertension</option>
+          <option value="mental_health">Mental Health</option>
+          <option value="musculoskeletal_pain">Musculoskeletal Pain</option>
+          <option value="obesity_metabolic">Obesity / Metabolic Care</option>
+          <option value="uti_symptoms">UTI Symptoms</option>
+          <option value="routine_dermatology">Routine Dermatology</option>
+          <option value="rash">Rash</option>
+          <option value="skin_infection">Skin Infection</option>
+          <option value="uri_sinus_throat">URI / Sinus / Throat</option>
+          <option value="vaginal_sti">Vaginal / STI</option>
         </select>
       </div>
       <div>
@@ -3007,7 +3045,10 @@ function renderEncounter() {
   banner.innerHTML = bannerHtml;
 
   // Dialogue — Q&A pairs, answers are editable
-  let dHtml = '<div class="encounter-edit-note"><strong>Live encounter input.</strong> Edit any question or answer, add real dialogue turns, then analyze. Blank concept fields are inferred from the question when possible.</div>';
+  let dHtml = '<div class="encounter-edit-note"><strong>Live encounter input.</strong> Edit any question or answer, add real dialogue turns, then analyze. Blank concept fields are inferred from the question and answer when possible.</div>';
+  if (c.parse_proof) {
+    dHtml += '<div class="parse-proof"><strong>Live input parsed:</strong> ' + esc(c.parse_proof.summary) + '</div>';
+  }
   for (let i = 0; i < stmts.length; i++) {
     const s = stmts[i];
     dHtml += renderDialoguePair(s, i);
@@ -3154,6 +3195,11 @@ function importTranscript(replace) {
   }
   const existing = replace ? [] : collectEncounterStatements();
   currentCase.case_data.statements = existing.concat(parsed);
+  const sources = Array.from(new Set(parsed.map(t => t.source || 'patient'))).join(', ');
+  const inferred = parsed.filter(t => !t.concept).length;
+  currentCase.parse_proof = {
+    summary: parsed.length + ' pasted turn(s) ' + (replace ? 'replaced the encounter' : 'appended to the encounter') + '; sources: ' + sources + '; ' + inferred + ' concept field(s) left blank for governed inference.'
+  };
   renderEncounter();
   togglePastePanel(false);
   showToast((replace ? 'Replaced' : 'Added') + ' ' + parsed.length + ' dialogue turn(s).');
@@ -3590,7 +3636,7 @@ function renderAutonomyBoundary(data) {
   h += '<div class="action-list"><h4>What restores readiness</h4><ul>';
   for (const r of data.what_restores_readiness || []) h += '<li>' + esc(r) + '</li>';
   h += '</ul></div></div>';
-  h += '<div class="decision-action" style="margin-top:14px;"><strong>Business effect:</strong> ' + esc(data.business_effect) + '</div>';
+  h += '<div class="decision-action" style="margin-top:14px;"><strong>Operational effect:</strong> ' + esc(data.business_effect) + '</div>';
   return h;
 }
 

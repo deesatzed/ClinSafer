@@ -120,7 +120,7 @@ Expert system handles:
 
 The output is auditable and therefore more deployable.
 
-### 6. Business mitigation
+### 6. Operational mitigation
 
 The same boundary layer can improve revenue and churn:
 
@@ -167,7 +167,7 @@ This is where the product becomes future-proofed: not every rare event can be pr
 
 ## Updated demo path
 
-Use the interactive CEO demo first:
+Use the interactive demo first:
 
 ```bash
 python interactive_demo.py
@@ -182,12 +182,12 @@ http://localhost:8001
 Show these panels in order:
 
 1. Statement vs Fact.
-2. Known Unknowns Map.
-3. Assumption Sufficiency Check.
-4. Autonomy Boundary.
-5. What should we ask next?
-6. Business Impact.
-7. Mitigation Plan.
+2. Provenance & Authority.
+3. Known Unknowns Map.
+4. Assumption Sufficiency Check.
+5. Autonomy Boundary.
+6. Final Recommendations.
+7. Governance Review, if there is time.
 
 The new mitigation panel is the bridge from current prototype to future-proofing:
 

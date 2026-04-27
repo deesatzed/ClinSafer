@@ -105,6 +105,12 @@ Live Fly deployment:
 https://clinsafer.fly.dev/
 ```
 
+Final interview readiness write-up:
+
+```text
+FINAL_DOCTRONIC_INTERVIEW_READINESS.md
+```
+
 For hosted demos, use the included `Procfile`:
 
 ```bash

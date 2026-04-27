@@ -1,5 +1,7 @@
 # Doctronic Interview Strategy: Dynamic Interpretation Boundaries
 
+Current live-demo companion: `FINAL_DOCTRONIC_INTERVIEW_READINESS.md`.
+
 ## Core Thesis
 
 Doctronic likely already has strong AI-doctor capabilities: clinical reasoning, multi-agent review, patient-facing dialogue, physician escalation, prescription-refill constraints, and safety checks. The showpiece should not imply those are missing.
