@@ -777,6 +777,171 @@ def _build_demo_summary(
     }
 
 
+def _build_final_recommendations(
+    case: CaseInput,
+    jre_report: ReadinessReport,
+    bsg_report: GuardrailReport,
+    combined_state: str,
+) -> Dict[str, Any]:
+    """Actionable final page synthesized from analysis and governance outputs."""
+    urgent = combined_state in {"ESCALATE", "FAIL_CLOSED"}
+    routed = combined_state in {
+        "ESCALATE",
+        "FAIL_CLOSED",
+        "ROUTE_CLINICIAN",
+        "HOLD_AND_VERIFY",
+        "NEED_OBJECTIVE_DATA",
+    }
+    top_findings = sorted(jre_report.findings, key=lambda x: -x.severity)[:6]
+    top_guardrails = sorted(bsg_report.findings, key=lambda x: -x.severity)[:4]
+
+    critical_evidence = [
+        {
+            "signal": _display_concept(f.concept),
+            "why": f.reason,
+            "rule": f.rule_id,
+            "authority": _authority_for_jre_finding(f)["authority"],
+        }
+        for f in top_findings
+    ] + [
+        {
+            "signal": f.rule_id.replace("_", " ").title(),
+            "why": f.reason,
+            "rule": f.rule_id,
+            "authority": _authority_for_bsg_finding(f.rule_id)["authority"],
+        }
+        for f in top_guardrails
+    ]
+
+    do_not_infer = []
+    for f in jre_report.findings:
+        if f.category in {"missing", "objective_needed", "unknowable_remote"}:
+            do_not_infer.append(f"{_display_concept(f.concept)} is not established: {f.reason}")
+        elif f.category in {"distorted", "contradictory"}:
+            do_not_infer.append(f"Do not treat {_display_concept(f.concept)} as settled negative evidence: {f.reason}")
+    do_not_infer = list(dict.fromkeys(do_not_infer))[:6]
+
+    immediate_actions = []
+    patient_message = ""
+    if urgent:
+        immediate_actions = [
+            "Stop routine automation and route to urgent human/emergency pathway.",
+            "Preserve the boundary map and top evidence in the clinician handoff.",
+            "Do not reassure, close, or delay based on patient minimization or cost/work pressure.",
+            "Ask only escalation-support questions needed to keep the patient engaged and safe.",
+        ]
+        patient_message = (
+            "I cannot safely tell you this can wait. The pattern you described can be time-sensitive, "
+            "especially because it happens with activity and improves with rest. Because cost and work are real barriers, "
+            "I want to help you find the safest urgent option now rather than delay."
+        )
+    elif routed:
+        immediate_actions = [
+            "Hold autonomous completion until the listed evidence gap is resolved.",
+            "Ask the smallest number of high-yield questions or request the objective data shown below.",
+            "Route to clinician if the gap cannot be closed quickly or reliably.",
+        ]
+        patient_message = (
+            "I need one or two specific details before this can be handled safely. "
+            "If you cannot provide them, a clinician should review this rather than guessing."
+        )
+    else:
+        immediate_actions = [
+            "Proceed only within the displayed autonomy tier.",
+            "Keep the audit trail and patient-facing safety boundaries visible.",
+            "Monitor for new symptoms, source conflict, stale data, or changed medication context.",
+        ]
+        patient_message = (
+            "The available information supports this narrow pathway, but the system should keep the boundary visible "
+            "and ask for help if anything changes."
+        )
+
+    next_questions = [
+        {
+            "target": _display_concept(q.concept),
+            "question": q.question,
+            "why": q.reason,
+        }
+        for q in jre_report.next_questions[:5]
+    ]
+    if urgent:
+        next_questions = [
+            {
+                "target": "Current danger",
+                "question": "Are the concerning symptoms happening right now or returning?",
+                "why": "Determines whether to intensify the urgent handoff while routing.",
+            },
+            {
+                "target": "Support",
+                "question": "Are you alone, or is someone with you who can help call emergency services?",
+                "why": "Reduces abandonment and unsafe self-management during escalation.",
+            },
+            {
+                "target": "Transport",
+                "question": "Can you call emergency services now? Do not drive yourself if symptoms are active or returning.",
+                "why": "Prevents unsafe self-transport.",
+            },
+            {
+                "target": "Access barrier",
+                "question": "If cost or work is why you want to wait, can we help find the safest urgent option now?",
+                "why": "Addresses the stated barrier without downgrading clinical risk.",
+            },
+        ]
+
+    governance_actions = [
+        "Record final clinician disposition and whether the routing decision was confirmed, corrected, false positive, or missed.",
+        "Capture whether patient cost/work pressure caused delay, abandonment, or successful engagement.",
+        "If clinician feedback changes the disposition, promote a template/rule update only after review and simulation.",
+    ]
+    if top_guardrails:
+        governance_actions.insert(0, "Review triggered guardrails for calibration before changing automation boundaries.")
+
+    ai_processing = {
+        "role": "External LLM is a candidate-signal extractor and synthesis assistant, not the decision authority.",
+        "prompt_contract": [
+            "Use the full encounter, governance state, known unknowns, and source reliability.",
+            "Identify hidden risk language, minimization, source conflict, stale data, and unsafe-delay pressure.",
+            "Return structured candidate findings with evidence and confidence.",
+            "Do not diagnose, reassure, authorize autonomous action, or override curated guardrails.",
+        ],
+        "current_authority": "Curated rules, validated guardrails, and the ensemble governor determine the final autonomy boundary.",
+    }
+
+    return {
+        "title": "Final Recommendations",
+        "case_id": case.case_id,
+        "case_title": CASE_NARRATIVES.get(case.case_id).title if case.case_id in CASE_NARRATIVES else case.case_id,
+        "disposition": combined_state,
+        "autonomy_tier": bsg_report.max_autonomy_tier,
+        "autonomy_description": AUTONOMY_TIERS.get(bsg_report.max_autonomy_tier, ""),
+        "bottom_line": (
+            "Escalate now. This is not safe for routine automation or delayed reassurance."
+            if urgent
+            else "Hold or route until the listed evidence boundary is closed."
+            if routed
+            else "Proceed only within the narrow audited pathway."
+        ),
+        "clinician_handoff": (
+            f"{case.patient_context.age}-year-old with {case.patient_context.chief_concern}. "
+            f"Final state {combined_state}; JRE={jre_report.state}, BSG={bsg_report.guardrail_state}. "
+            f"Top blockers: " + "; ".join(item["why"] for item in critical_evidence[:3])
+        ),
+        "immediate_actions": immediate_actions,
+        "critical_evidence": critical_evidence[:8],
+        "do_not_infer": do_not_infer,
+        "next_questions": next_questions,
+        "patient_message": patient_message,
+        "governance_actions": governance_actions,
+        "ai_processing": ai_processing,
+        "quality_metrics": [
+            "Was the final disposition confirmed by clinician review?",
+            "Did the patient complete the recommended routing step?",
+            "Did the explanation reduce abandonment or unsafe delay?",
+            "Which missing evidence would have changed the disposition?",
+        ],
+    }
+
+
 def _build_provenance_authority_section(
     case: CaseInput,
     jre_report: ReadinessReport,
@@ -1400,6 +1565,9 @@ def analyze_case(req: AnalyzeRequest):
         "combined_state": combined_state,
         "duration_ms": round(duration_ms, 1),
         "summary": _build_demo_summary(case, jre_report, bsg_report, combined_state),
+        "recommendations": _build_final_recommendations(
+            case, jre_report, bsg_report, combined_state
+        ),
         "sections": sections,
     }
 
@@ -2349,6 +2517,50 @@ textarea.suggestion-edit {
   color: var(--text-dim);
   margin-bottom: 8px;
 }
+.recommendations-shell { display: grid; gap: 14px; }
+.recommendation-hero {
+  background: linear-gradient(135deg, #ffffff 0%, #ecfdf5 48%, #fff7ed 100%);
+  border: 1px solid rgba(15,159,154,0.26);
+  border-radius: var(--radius);
+  padding: 18px;
+  box-shadow: var(--shadow);
+}
+.recommendation-hero h2 { font-size: 20px; margin-bottom: 8px; }
+.recommendation-bottom-line { font-size: 16px; font-weight: 800; margin: 8px 0; }
+.recommendation-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+}
+.recommendation-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+}
+.recommendation-card h3 {
+  font-size: 13px;
+  color: var(--accent);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+.recommendation-card ul { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.55; }
+.evidence-row {
+  border-left: 3px solid var(--accent);
+  background: #f8fcfd;
+  border-radius: 6px;
+  padding: 9px 10px;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+.patient-script {
+  background: #fffdf7;
+  border: 1px solid rgba(245,158,11,0.25);
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 14px;
+  line-height: 1.55;
+}
 .boundary-table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .boundary-table th { text-align: left; padding: 8px; color: var(--text-dim); border-bottom: 1px solid var(--border); }
 .boundary-table td { padding: 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
@@ -2407,6 +2619,7 @@ textarea.suggestion-edit {
     <button id="nav-cases" onclick="showScreen('cases')">Cases</button>
     <button id="nav-encounter" onclick="showScreen('encounter')">Encounter</button>
     <button id="nav-analysis" onclick="showScreen('analysis')">Analysis</button>
+    <button id="nav-recommendations" onclick="showScreen('recommendations')">Recommendations</button>
     <button id="nav-learning" onclick="showScreen('learning')">Governance</button>
   </div>
 </div>
@@ -2492,6 +2705,17 @@ textarea.suggestion-edit {
   <div id="analysis-summary"></div>
   <div id="analysis-sections"></div>
   <div class="btn-row" id="analysis-actions" style="display:none;">
+    <button class="btn btn-secondary" onclick="showScreen('encounter')">Edit Encounter</button>
+    <button class="btn btn-primary" onclick="showRecommendations()">Final Recommendations</button>
+    <button class="btn btn-primary" onclick="showScreen('learning')">Governance Review</button>
+  </div>
+</div>
+
+<!-- Screen 4: Final Recommendations -->
+<div id="screen-recommendations" class="screen">
+  <div id="recommendations-content"></div>
+  <div class="btn-row">
+    <button class="btn btn-secondary" onclick="showScreen('analysis')">Back to Analysis</button>
     <button class="btn btn-secondary" onclick="showScreen('encounter')">Edit Encounter</button>
     <button class="btn btn-primary" onclick="showScreen('learning')">Governance Review</button>
   </div>
@@ -2950,6 +3174,66 @@ function renderDemoSummary(data) {
   h += '<div class="summary-note"><strong>Autonomy:</strong><br>' + esc(data.autonomy || '') + '</div>';
   h += '</div></div>';
   h += '<div style="font-size:13px;color:var(--text-dim);margin-top:10px;">' + esc(data.patient_pattern || '') + '</div>';
+  h += '</div>';
+  return h;
+}
+
+function showRecommendations() {
+  if (!currentAnalysis || !currentAnalysis.recommendations) {
+    showToast('Run analysis first.');
+    return;
+  }
+  document.getElementById('recommendations-content').innerHTML = renderRecommendations(currentAnalysis.recommendations);
+  showScreen('recommendations');
+}
+
+function renderRecommendations(data) {
+  let h = '<div class="recommendations-shell">';
+  h += '<div class="recommendation-hero">';
+  h += '<div><span class="state-badge state-' + esc(data.disposition) + '">' + esc(String(data.disposition).replace(/_/g, ' ')) + '</span></div>';
+  h += '<h2>' + esc(data.title || 'Final Recommendations') + '</h2>';
+  h += '<div style="font-size:13px;color:var(--text-dim);">' + esc(data.case_title || data.case_id || '') + '</div>';
+  h += '<div class="recommendation-bottom-line">' + esc(data.bottom_line || '') + '</div>';
+  h += '<div style="font-size:13px;color:var(--text-dim);">Autonomy: <strong>' + esc(data.autonomy_tier || '') + '</strong> — ' + esc(data.autonomy_description || '') + '</div>';
+  h += '</div>';
+
+  h += '<div class="recommendation-grid">';
+  h += '<div class="recommendation-card"><h3>Immediate Actions</h3><ul>';
+  for (const item of data.immediate_actions || []) h += '<li>' + esc(item) + '</li>';
+  h += '</ul></div>';
+  h += '<div class="recommendation-card"><h3>Do Not Infer</h3><ul>';
+  for (const item of data.do_not_infer || []) h += '<li>' + esc(item) + '</li>';
+  if (!(data.do_not_infer || []).length) h += '<li>No major unsafe inference boundary identified.</li>';
+  h += '</ul></div>';
+  h += '</div>';
+
+  h += '<div class="recommendation-grid">';
+  h += '<div class="recommendation-card"><h3>Critical Evidence</h3>';
+  for (const ev of data.critical_evidence || []) {
+    h += '<div class="evidence-row"><strong>' + esc(ev.signal) + '</strong> ' + authorityChip(ev.authority) + '<br><span style="color:var(--text-dim)">' + esc(ev.why) + '</span><br><span style="font-size:11px;color:var(--text-dim);">' + esc(ev.rule) + '</span></div>';
+  }
+  h += '</div>';
+  h += '<div class="recommendation-card"><h3>Next Questions / Routing Support</h3>';
+  for (const q of data.next_questions || []) {
+    h += '<div class="evidence-row"><strong>' + esc(q.target) + '</strong><br>' + esc(q.question) + '<br><span style="color:var(--text-dim)">' + esc(q.why) + '</span></div>';
+  }
+  h += '</div></div>';
+
+  h += '<div class="recommendation-card"><h3>Patient-Facing Message</h3><div class="patient-script">' + esc(data.patient_message || '') + '</div></div>';
+  h += '<div class="recommendation-card"><h3>Clinician Handoff</h3><div style="font-size:13px;line-height:1.55;">' + esc(data.clinician_handoff || '') + '</div></div>';
+
+  h += '<div class="recommendation-grid">';
+  h += '<div class="recommendation-card"><h3>Governance Follow-up</h3><ul>';
+  for (const item of data.governance_actions || []) h += '<li>' + esc(item) + '</li>';
+  h += '</ul></div>';
+  h += '<div class="recommendation-card"><h3>AI Processing Contract</h3><div style="font-size:13px;color:var(--text-dim);margin-bottom:8px;">' + esc((data.ai_processing || {}).role || '') + '</div><ul>';
+  for (const item of ((data.ai_processing || {}).prompt_contract || [])) h += '<li>' + esc(item) + '</li>';
+  h += '</ul><div style="font-size:12px;color:var(--text-dim);margin-top:8px;">' + esc((data.ai_processing || {}).current_authority || '') + '</div></div>';
+  h += '</div>';
+
+  h += '<div class="recommendation-card"><h3>Quality Metrics To Capture</h3><ul>';
+  for (const item of data.quality_metrics || []) h += '<li>' + esc(item) + '</li>';
+  h += '</ul></div>';
   h += '</div>';
   return h;
 }

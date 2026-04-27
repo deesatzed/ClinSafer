@@ -109,6 +109,7 @@ class TestPageServing:
         assert 'id="screen-cases"' in html
         assert 'id="screen-encounter"' in html
         assert 'id="screen-analysis"' in html
+        assert 'id="screen-recommendations"' in html
         assert 'id="screen-learning"' in html
 
     def test_page_contains_js_functions(self):
@@ -117,6 +118,8 @@ class TestPageServing:
         assert "function showScreen" in html
         assert "function analyzeEncounter" in html
         assert "function renderAnalysis" in html
+        assert "function showRecommendations" in html
+        assert "function renderRecommendations" in html
         assert "function loadCases" in html
         assert "function selectCaseById" in html
         assert "function addDialogueTurn" in html
@@ -132,8 +135,10 @@ class TestPageServing:
         assert 'id="nav-cases"' in html
         assert 'id="nav-encounter"' in html
         assert 'id="nav-analysis"' in html
+        assert 'id="nav-recommendations"' in html
         assert 'id="nav-learning"' in html
         assert "Overview" in html
+        assert "Recommendations" in html
         assert "Governance" in html
 
     def test_encounter_page_has_live_edit_controls(self):
@@ -251,6 +256,21 @@ class TestAnalysisEndpoint:
             assert "title" in section
             assert "subtitle" in section
             assert len(section["title"]) > 0
+
+    def test_analysis_returns_final_recommendations(self):
+        case = BASE_CASES[0]
+        resp = client.post("/demo/analyze", json=_make_analyze_payload(case))
+        data = resp.json()
+        recs = data["recommendations"]
+        assert recs["title"] == "Final Recommendations"
+        assert recs["disposition"] == data["combined_state"]
+        assert recs["bottom_line"]
+        assert recs["immediate_actions"]
+        assert recs["critical_evidence"]
+        assert recs["patient_message"]
+        assert recs["clinician_handoff"]
+        assert recs["ai_processing"]["prompt_contract"]
+        assert recs["governance_actions"]
 
     def test_mitigation_plan_section_has_learning_layers(self):
         case = BASE_CASES[0]
