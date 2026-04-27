@@ -99,6 +99,12 @@ python interactive_demo.py
 # Runs at http://localhost:8001
 ```
 
+Live Fly deployment:
+
+```text
+https://clinsafer.fly.dev/
+```
+
 For hosted demos, use the included `Procfile`:
 
 ```bash

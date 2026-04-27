@@ -1,0 +1,12 @@
+.git
+.fly
+.env
+.pytest_cache
+__pycache__
+*.pyc
+*.pyo
+.DS_Store
+artifacts
+*.log
+*.bak
+*-this-session-is-being-continued-from-a-previous-co.txt
