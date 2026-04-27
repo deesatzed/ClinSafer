@@ -91,6 +91,22 @@ python api_server.py
 # Runs at http://localhost:8000 with interactive docs at /docs
 ```
 
+### Interactive Demo
+
+```bash
+pip install -r requirements.txt
+python interactive_demo.py
+# Runs at http://localhost:8001
+```
+
+For hosted demos, use the included `Procfile`:
+
+```bash
+uvicorn interactive_demo:app --host 0.0.0.0 --port $PORT
+```
+
+GitHub stores the repo; a dynamic FastAPI app still needs a runtime such as Render, Railway, Fly.io, or Codespaces.
+
 ### Optional: LLM-Augmented Detection
 
 The engine works in pure regex mode by default. To enable LLM-augmented detection (catches novel phrasings regex misses):
