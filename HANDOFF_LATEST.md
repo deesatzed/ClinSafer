@@ -3,7 +3,7 @@
 **Updated:** 2026-04-28
 **Repo:** `https://github.com/deesatzed/ClinSafer.git`
 **Live app:** `https://clinsafer.fly.dev/`
-**Latest implemented commit:** pending current cognitive-bias layer commit
+**Latest feature commit:** `2c42f15 Add reasoning integrity bias guard`
 
 This is an interview/demo artifact, not a clinical protocol, medical device, or
 production triage system.
@@ -80,16 +80,16 @@ OPENROUTER_WORKFLOW_MODEL=qwen/qwen3.6-flash
 OPENROUTER_MAX_PARALLEL_ROLES=4
 ```
 
-Live smoke on 2026-04-28:
+Live smoke on 2026-04-28 after adding `bias_auditor`:
 
 ```text
 /demo/llm-analyze
 model: qwen/qwen3.6-flash
-extractor: success, 2 findings
+extractor: success, 3 findings
 boundary: success, 4 findings
 verifier: success, 4 findings
-total LLM candidate findings: 10
-Note: this smoke predated the `bias_auditor` role. Re-run after deployment.
+bias_auditor: success, 4 findings
+total LLM candidate findings: 15
 ```
 
 ## Input Coverage Guarantee
@@ -139,6 +139,7 @@ LLM role manifest:
   extractor qwen/qwen3.6-flash enabled
   boundary qwen/qwen3.6-flash enabled
   verifier qwen/qwen3.6-flash enabled
+  bias_auditor qwen/qwen3.6-flash enabled
 ```
 
 Reasoning Integrity smoke:
