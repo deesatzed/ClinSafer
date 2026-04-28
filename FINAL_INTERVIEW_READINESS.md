@@ -77,6 +77,12 @@ Safe wording:
 
 Do not start with the full case library. Start with the story.
 
+Use the tactical script in:
+
+```text
+INTERVIEW_DEMO_CHEAT_SHEET.md
+```
+
 1. Open the live app.
 2. State that this is not an AI doctor. It is an autonomy-boundary layer around an AI doctor.
 3. Run the cost-fear case or paste a short real encounter transcript.
