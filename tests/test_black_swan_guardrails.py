@@ -70,6 +70,23 @@ def test_blood_in_sputum_escalates_even_when_added_as_free_text():
         f"Expected SENTINEL_ACTIVE_BLEEDING. Got: {[f.rule_id for f in report.findings]}"
 
 
+def test_back_pain_private_area_and_bladder_language_escalates():
+    """Back pain plus saddle/private-area and bladder language should hard-stop."""
+    case = CaseInput(
+        case_id="test-back-pain-neuro-bladder",
+        patient_context=PatientContext(age=62, chief_concern="lower back pain", domain="musculoskeletal_pain", modality="text"),
+        statements=[
+            Statement("Tell me about your back pain.", "Lower back pain after lifting last week.", concept=None),
+            Statement("Any numbness or tingling?", "Yes, tingling in my left foot at times and in my private areas.", concept=None),
+            Statement("Any issues with urination?", "No but my bleeder seems more full than usual.", concept=None),
+        ],
+    )
+    report = _eval_case(case)
+    assert report.guardrail_state == "ESCALATE"
+    assert any(f.rule_id == "SENTINEL_BACK_PAIN_NEURO_BLADDER" for f in report.findings), \
+        f"Expected SENTINEL_BACK_PAIN_NEURO_BLADDER. Got: {[f.rule_id for f in report.findings]}"
+
+
 def test_copy_paste_detected():
     report = _eval("BS-010-copy-paste-rote-denial")
     assert report.guardrail_state in {"HOLD_AND_VERIFY", "ROUTE_CLINICIAN"}

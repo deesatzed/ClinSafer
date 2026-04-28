@@ -195,7 +195,7 @@ function addCover() {
             { width: fill, height: fill, gap: 26, justify: "center" },
             [
               metric("46", "synthetic cases in the live library", C.tealDeep),
-              metric("330", "passing tests after final polish", C.blue),
+              metric("332", "passing tests after final polish", C.blue),
               metric("1", "most-restrictive governor decides autonomy", C.coral),
             ],
           ),
@@ -495,7 +495,7 @@ function addRealVsPrototype() {
     ),
     row(
       { width: fill, height: hug, gap: 28, align: "center" },
-      [pill("330 tests passed", C.tealDeep), pill("Live Fly deployment", C.blue), pill("OpenRouter model configurable", C.violet)],
+      [pill("332 tests passed", C.tealDeep), pill("Live Fly deployment", C.blue), pill("OpenRouter model configurable", C.violet)],
     ),
     footer(),
   ]);

@@ -386,8 +386,8 @@ RED_FLAG_PATTERNS: Dict[str, List[tuple[str, str, float]]] = {
         ("alarm_gi", "trouble swallowing|vomiting blood|black stool|weight loss|persistent vomiting", 0.9),
     ],
     "musculoskeletal_pain": [
-        ("neuro_deficit", "weak|numb|saddle|foot drop|can't walk|cannot walk", 0.95),
-        ("bowel_bladder", "lost bladder|lost bowel|can't urinate|cannot urinate|incontinence", 1.0),
+        ("neuro_deficit", "weak|numb|tingl|saddle|private area|groin|genital|perineal|inner thigh|foot drop|can't walk|cannot walk|stairs", 0.95),
+        ("bowel_bladder", "lost bladder|lost bowel|can't urinate|cannot urinate|can't pee|cannot pee|can't empty|cannot empty|incontinence|urinary retention|bladder.*full|bleeder.*full|more full than usual", 1.0),
         ("infection_cancer_risk", "fever|cancer|IV drug|immunosuppressed|weight loss", 0.9),
         ("trauma_mechanism", "fall|crash|major injury|hit by|blood thinner", 0.85),
     ],

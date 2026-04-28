@@ -1096,6 +1096,14 @@ def infer_concept(text: str) -> Optional[str]:
     q = text.lower()
     if re.search(r"\b(cough(?:ing|ed)?(?: up)?.{0,50}\bblood|blood.{0,40}\bsputum|bloody sputum|spit(?:ting)? blood|hemoptysis)\b", q, re.I):
         return "hemoptysis"
+    if re.search(r"\b(saddle|private areas?|groin|genital|perineal|inner thighs?|tingl(?:e|ing)|numb(?:ness)?|weak(?:ness)?|legs?.*weak|foot drop|trouble walking|stairs)\b", q, re.I):
+        return "neuro_deficit"
+    if re.search(r"\b(bladder|bleeder|urinat(?:e|ion|ing)|pee|void|bowel|stool|incontinence|retention|fuller? than usual|more full|can't go|cannot go|can't empty|cannot empty)\b", q, re.I):
+        return "bowel_bladder"
+    if re.search(r"\b(lift(?:ing|ed)?|fall|injury|crash|trauma|heavy lift)\b", q, re.I):
+        return "trauma_mechanism"
+    if re.search(r"\b(back pain|lower back|low back|pain getting worse|not getting better)\b", q, re.I):
+        return "pain_function"
     mappings = [
         ("blood pressure", "home_bp_number"),
         ("glucose", "glucose_number"),

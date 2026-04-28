@@ -315,6 +315,61 @@ class TestAnalysisEndpoint:
         assert data["statements"][1]["concept"] == "hemoptysis"
         assert data["statements"][1]["metadata"]["imported_from_transcript"] is True
 
+    def test_parse_transcript_infers_context_and_back_pain_red_flags(self):
+        transcript = (
+            "Clinician: Mr. X can you tell me your age?\n"
+            "Patient: I’m 62.\n"
+            "Clinician: What medical conditions do you have?\n"
+            "Patient: T2DM, HTN, BPH.\n"
+            "Clinician: What medications are you taking?\n"
+            "Patient: GLP1, Losartan, Flomax, ibuprofen.\n"
+            "Clinician: Tell me about your back pain.\n"
+            "Patient: Lower back pain after lifting last week.\n"
+            "Clinician: Any numbness or tingling?\n"
+            "Patient: Yes, tingling in my left foot at times and in my private areas.\n"
+            "Clinician: Any weakness?\n"
+            "Patient: My legs feel weaker on stairs, but it may be the pain gets worse.\n"
+            "Clinician: Any issues with urination?\n"
+            "Patient: No but my bleeder seems more full than usual.\n"
+            "Clinician: Any loss of bowel control?\n"
+            "Patient: No.\n"
+            "Clinician: Is the pain getting worse?\n"
+            "Patient: No, but not getting better."
+        )
+        resp = client.post("/demo/parse-transcript", json={"transcript": transcript})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["patient_context"]["age"] == 62
+        assert data["patient_context"]["domain"] == "musculoskeletal_pain"
+        assert "type 2 diabetes" in data["patient_context"]["known_conditions"]
+        assert "hypertension" in data["patient_context"]["known_conditions"]
+        assert "BPH" in data["patient_context"]["known_conditions"]
+        assert "Losartan" in data["medications"]
+        assert data["context_rows"] == 3
+        assert "unknown" not in data["concepts"]
+        assert "neuro_deficit" in data["concepts"]
+        assert "bowel_bladder" in data["concepts"]
+
+        analyze_resp = client.post(
+            "/demo/analyze",
+            json={
+                "case_id": "parsed-back-pain-transcript",
+                "patient_context": data["patient_context"],
+                "statements": data["statements"],
+                "ground_truth": {"medications": data["medications"]},
+            },
+        )
+        assert analyze_resp.status_code == 200
+        analysis = analyze_resp.json()
+        assert analysis["combined_state"] == "ESCALATE"
+        guardrails = {
+            f["rule_id"]
+            for s in analysis["sections"]
+            if s["id"] == "guardrails"
+            for f in s["data"]["findings"]
+        }
+        assert "SENTINEL_BACK_PAIN_NEURO_BLADDER" in guardrails
+
     def test_defense_pattern_case_has_actionable_human_factor_recommendations(self):
         case = _ALL_CASES["showcase-010-defense-pattern-distortion"]
         resp = client.post("/demo/analyze", json=_make_analyze_payload(case))

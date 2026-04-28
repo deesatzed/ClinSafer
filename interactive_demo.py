@@ -314,6 +314,120 @@ def _parse_transcript_text(text: str) -> List[Dict[str, Any]]:
 
     return [turn for turn in turns if (turn.get("question") or turn.get("answer")) and turn.get("answer")]
 
+
+def _is_context_statement(stmt: Dict[str, Any]) -> bool:
+    question = str(stmt.get("question") or "").lower()
+    return bool(
+        re.search(
+            r"\bage\b|how old|medical conditions|conditions|pmh|past medical|diagnos|medications|medicines|meds|what.*taking",
+            question,
+            re.I,
+        )
+    )
+
+
+CONDITION_ALIASES = {
+    "t2dm": "type 2 diabetes",
+    "dm2": "type 2 diabetes",
+    "diabetes": "diabetes",
+    "htn": "hypertension",
+    "bph": "BPH",
+    "ckd": "chronic kidney disease",
+    "copd": "COPD",
+    "cad": "coronary artery disease",
+}
+
+
+def _split_listish_answer(answer: str) -> List[str]:
+    cleaned = re.sub(r"\band\b", ",", str(answer), flags=re.I)
+    items = [
+        re.sub(r"^[\s:\-]+|[\s.]+$", "", item).strip()
+        for item in re.split(r"[,;/\n]+", cleaned)
+    ]
+    return [item for item in items if item]
+
+
+def _normalize_condition(item: str) -> str:
+    key = re.sub(r"[^a-z0-9]+", "", item.lower())
+    return CONDITION_ALIASES.get(key, item.strip())
+
+
+def _infer_domain_from_transcript(text: str, chief_concern: str = "") -> str:
+    blob = f"{chief_concern} {text}".lower()
+    if re.search(r"\b(back pain|lower back|low back|lifting|saddle|private areas?|bladder|bleeder|leg(?:s)? feel weak|foot drop)\b", blob):
+        return "musculoskeletal_pain"
+    if re.search(r"\b(chest|pressure|tight|indigestion|heartburn|jaw|arm)\b", blob):
+        return "chest_discomfort"
+    if re.search(r"\b(shortness of breath|breath|oxygen|pulse ox|wheez|cough|sputum)\b", blob):
+        return "dyspnea_respiratory"
+    if re.search(r"\b(urine|uti|burning with urination|flank|kidney)\b", blob):
+        return "uti_symptoms"
+    if re.search(r"\b(abdominal|belly|diarrhea|vomit|blood in stool|black stool)\b", blob):
+        return "gi_symptoms"
+    if re.search(r"\b(headache|migraine|vision|neck stiff)\b", blob):
+        return "headache_migraine"
+    if re.search(r"\b(rash|skin|hives|itch|blister)\b", blob):
+        return "rash"
+    if re.search(r"\b(anxiety|depress|suicid|sleep|panic)\b", blob):
+        return "mental_health"
+    return "general_med_management"
+
+
+def _extract_context_from_transcript(text: str, statements: List[Dict[str, Any]]) -> Dict[str, Any]:
+    normalized = str(text).replace("’", "'")
+    age = 50
+    known_conditions: List[str] = []
+    medications: List[str] = []
+    chief_concern = ""
+
+    for stmt in statements:
+        question = str(stmt.get("question") or "").lower()
+        answer = str(stmt.get("answer") or "").strip()
+        answer_norm = answer.replace("’", "'")
+        if re.search(r"\bage\b|how old", question):
+            match = re.search(r"\b(?:i am|i'm|age is|around|about)?\s*(\d{1,3})\b", answer_norm, re.I)
+            if match:
+                age = int(match.group(1))
+        if re.search(r"medical conditions|conditions|pmh|past medical|diagnos", question):
+            known_conditions.extend(_normalize_condition(item) for item in _split_listish_answer(answer))
+        if re.search(r"medications|medicines|meds|taking", question):
+            medications.extend(_split_listish_answer(answer))
+        if not chief_concern and re.search(r"tell me about|what.*bring|chief concern|main concern|pain|symptom", question):
+            chief_concern = answer
+
+    if age == 50:
+        match = re.search(r"\b(?:i am|i'm|age is|age:|aged)\s*(\d{1,3})\b", normalized, re.I)
+        if match:
+            age = int(match.group(1))
+    if not known_conditions:
+        for token, label in CONDITION_ALIASES.items():
+            if re.search(rf"\b{re.escape(token)}\b", normalized, re.I):
+                known_conditions.append(label)
+    if not medications:
+        med_match = re.search(r"(?:medications|medicines|meds|taking)\??\s*(?:patient:)?\s*([^\n]+)", normalized, re.I)
+        if med_match:
+            medications.extend(_split_listish_answer(med_match.group(1)))
+    if not chief_concern:
+        if re.search(r"\blower back|low back|back pain\b", normalized, re.I):
+            chief_concern = "lower back pain"
+        elif statements:
+            chief_concern = str(statements[0].get("answer") or "transcript encounter")
+
+    known_conditions = list(dict.fromkeys(c for c in known_conditions if c))
+    medications = list(dict.fromkeys(m for m in medications if m))
+    domain = _infer_domain_from_transcript(normalized, chief_concern)
+    return {
+        "age": max(0, min(150, age)),
+        "chief_concern": chief_concern or "transcript encounter",
+        "domain": domain,
+        "literacy_hint": "unknown",
+        "language_barrier": False,
+        "has_caregiver": any((s.get("source") == "caregiver") for s in statements),
+        "modality": "text",
+        "known_conditions": known_conditions,
+        "medications": medications,
+    }
+
 CATEGORY_GROUPS = {
     "Distortion Detection": [
         "base_escalation",
@@ -1871,14 +1985,25 @@ def get_experience():
 @app.post("/demo/parse-transcript")
 def parse_transcript(req: TranscriptParseRequest):
     """Parse pasted encounter text into editable statements with governed concept inference."""
-    statements = _parse_transcript_text(req.transcript)
+    raw_statements = _parse_transcript_text(req.transcript)
+    extracted_context = _extract_context_from_transcript(req.transcript, raw_statements)
+    statements = [s for s in raw_statements if not _is_context_statement(s)]
+    if not statements:
+        statements = raw_statements
     concepts = sorted({s.get("concept") or "unknown" for s in statements})
     sources = sorted({s.get("source") or "patient" for s in statements})
     return {
         "statements": statements,
         "count": len(statements),
+        "context_rows": len(raw_statements) - len(statements),
         "concepts": concepts,
         "sources": sources,
+        "patient_context": {
+            k: v
+            for k, v in extracted_context.items()
+            if k != "medications"
+        },
+        "medications": extracted_context["medications"],
         "llm_available": bool(_llm is not None and _llm.available),
         "classification_note": (
             "Transcript imported as editable turns. Source and concept labels are used by the governed analysis; "
@@ -3039,7 +3164,8 @@ textarea.suggestion-edit {
 <div class="header">
   <h1>Clinical Safety <span>Interactive Demo</span></h1>
   <div class="header-nav">
-    <button id="nav-overview" class="active" onclick="showScreen('overview')">Overview</button>
+    <button id="nav-transcript" class="active" onclick="showScreen('transcript')">Start Transcript</button>
+    <button id="nav-overview" onclick="showScreen('overview')">Overview</button>
     <button id="nav-cases" onclick="showScreen('cases')">Cases</button>
     <button id="nav-encounter" onclick="showScreen('encounter')">Encounter</button>
     <button id="nav-analysis" onclick="showScreen('analysis')">Analysis</button>
@@ -3048,8 +3174,40 @@ textarea.suggestion-edit {
   </div>
 </div>
 
+<!-- Screen 0: Transcript-first workflow -->
+<div id="screen-transcript" class="screen active">
+  <div class="transcript-intake-card">
+    <h3>Start With A Real Transcript</h3>
+    <p>Paste the encounter as one block, including demographics, history, medications, and the clinical dialogue. The app will infer the patient context, PMH, medication list, domain, source labels, concepts, and editable turns before analysis.</p>
+    <label>Paste Transcript</label>
+    <textarea id="quick-transcript" style="min-height:340px;" placeholder="Clinician: Mr. X can you tell me your age?
+Patient: I’m 62.
+Clinician: What medical conditions do you have?
+Patient: T2DM, HTN, BPH.
+Clinician: What medications are you taking?
+Patient: GLP1, Losartan, Flomax, ibuprofen.
+Clinician: Tell me about your back pain.
+Patient: Lower back pain after lifting last week.
+Clinician: Any numbness or tingling?
+Patient: Yes, tingling in my left foot at times and in my private areas.
+Clinician: Any weakness?
+Patient: My legs feel weaker on stairs, but it may be the pain gets worse.
+Clinician: Any issues with urination?
+Patient: No but my bleeder seems more full than usual.
+Clinician: Any loss of bowel control?
+Patient: No.
+Clinician: Is the pain getting worse?
+Patient: No, but not getting better."></textarea>
+    <div class="btn-row" style="margin-top:12px;">
+      <button class="btn btn-primary" onclick="submitTranscriptCardCase()">Parse Transcript Encounter</button>
+      <button class="btn btn-secondary" onclick="showScreen('cases')">Use Demo Case Library</button>
+    </div>
+    <div id="quick-transcript-proof" class="transcript-proof">This is the real-intake path: no separate clinician data-entry fields. The transcript should carry demographics, PMH, meds, symptoms, denials, uncertainty, and human context.</div>
+  </div>
+</div>
+
 <!-- Screen 0: Overview -->
-<div id="screen-overview" class="screen active">
+<div id="screen-overview" class="screen">
   <div class="showcase-hero">
     <div class="showcase-claim">Not an AI doctor. A learning autonomy-boundary layer around an AI doctor.</div>
     <div class="showcase-subclaim">This demo now shows the mitigation stack explicitly: deterministic controls today, plus stigmergic boundary traces and VAMS near-miss recall as the next governed learning layer.</div>
@@ -3103,65 +3261,6 @@ textarea.suggestion-edit {
       <h2 style="font-size:20px;font-weight:600;">Select a Clinical Case</h2>
       <p style="font-size:13px;color:var(--text-dim);">Each case demonstrates a different safety detection capability.</p>
     </div>
-  </div>
-  <div class="transcript-intake-card">
-    <h3>Start With A Real Transcript</h3>
-    <p>Paste raw encounter dialogue. The app parses speaker turns, classifies concepts where it can, keeps every row editable, and then sends the same turns through the governed analysis and async LLM extractor.</p>
-    <div class="transcript-intake-grid">
-      <div>
-        <label>Chief Concern</label>
-        <input id="quick-concern" value="custom transcript encounter" placeholder="e.g., cough and fever">
-      </div>
-      <div>
-        <label>Age</label>
-        <input id="quick-age" type="number" value="50" min="0" max="150">
-      </div>
-      <div>
-        <label>Modality</label>
-        <select id="quick-modality"><option value="text">Text</option><option value="phone">Phone</option><option value="video">Video</option><option value="in_person">In Person</option></select>
-      </div>
-      <div>
-        <label>Known Conditions</label>
-        <input id="quick-conditions" placeholder="comma-separated">
-      </div>
-    </div>
-    <div class="transcript-intake-grid" style="grid-template-columns: 1fr 1fr;">
-      <div>
-        <label>Domain</label>
-        <select id="quick-domain">
-          <option value="chest_discomfort">Chest Discomfort</option>
-          <option value="dyspnea_respiratory">Dyspnea/Respiratory</option>
-          <option value="uri_sinus_throat">URI / Sinus / Throat</option>
-          <option value="gi_symptoms">GI Symptoms</option>
-          <option value="gerd_dyspepsia">GERD / Dyspepsia</option>
-          <option value="mental_health">Mental Health</option>
-          <option value="adhd_behavioral_med">ADHD / Behavioral Medication</option>
-          <option value="asthma_allergy">Asthma / Allergy</option>
-          <option value="diabetes_hyperglycemia">Diabetes / Hyperglycemia</option>
-          <option value="eye_ear">Eye / Ear</option>
-          <option value="followup_lab_review">Follow-up / Lab Review</option>
-          <option value="general_med_management">General Medication Management</option>
-          <option value="headache_migraine">Headache/Migraine</option>
-          <option value="med_refill_hypertension">Med Refill/Hypertension</option>
-          <option value="musculoskeletal_pain">Musculoskeletal Pain</option>
-          <option value="obesity_metabolic">Obesity / Metabolic Care</option>
-          <option value="uti_symptoms">UTI Symptoms</option>
-          <option value="routine_dermatology">Routine Dermatology</option>
-          <option value="rash">Rash</option>
-          <option value="skin_infection">Skin Infection</option>
-          <option value="vaginal_sti">Vaginal / STI</option>
-        </select>
-      </div>
-      <div>
-        <label>Transcript</label>
-        <textarea id="quick-transcript" placeholder="Patient: Cough and fever.&#10;Clinician: How high is the fever?&#10;Patient: Around 101.&#10;Clinician: Any shortness of breath?&#10;Patient: A little when I walk."></textarea>
-      </div>
-    </div>
-    <div class="btn-row">
-      <button class="btn btn-primary" onclick="submitTranscriptCardCase()">Parse Transcript Encounter</button>
-      <button class="btn btn-secondary" onclick="openCustomBuilder()">Open Detailed Builder</button>
-    </div>
-    <div id="quick-transcript-proof" class="transcript-proof">Source controls reliability weighting and conflict detection. Concept controls which template slot, rule family, missing-data check, and next-question logic sees the statement. Blank concepts are inferred and remain editable.</div>
   </div>
   <div id="case-grid-container"></div>
 </div>
@@ -3512,6 +3611,7 @@ function renderEncounter() {
   }
   const ctx = c.case_data.patient_context || {};
   const conditions = ctx.known_conditions || [];
+  const medications = (c.case_data.ground_truth || {}).medications || [];
   const stmts = c.case_data.statements || [];
 
   // Banner — patient context summary
@@ -3523,6 +3623,9 @@ function renderEncounter() {
   bannerHtml += '<div class="ctx-item"><span class="ctx-label">Modality:</span><span class="ctx-value">' + esc(ctx.modality || '') + '</span></div>';
   if (conditions.length) {
     bannerHtml += '<div class="ctx-item"><span class="ctx-label">Conditions:</span><span class="ctx-value">' + esc(conditions.join(', ')) + '</span></div>';
+  }
+  if (medications.length) {
+    bannerHtml += '<div class="ctx-item"><span class="ctx-label">Meds:</span><span class="ctx-value">' + esc(medications.join(', ')) + '</span></div>';
   }
   if (ctx.language_barrier) {
     bannerHtml += '<div class="ctx-item"><span class="ctx-value" style="color:var(--orange)">Language Barrier</span></div>';
@@ -3733,13 +3836,16 @@ async function submitTranscriptCardCase() {
     return;
   }
 
-  const domain = document.getElementById('quick-domain').value;
-  const age = parseInt(document.getElementById('quick-age').value) || 50;
-  const concern = document.getElementById('quick-concern').value || 'custom transcript encounter';
-  const modality = document.getElementById('quick-modality').value;
-  const conditions = document.getElementById('quick-conditions').value.split(',').map(s => s.trim()).filter(Boolean);
+  const parsedCtx = parseData && parseData.patient_context ? parseData.patient_context : {};
+  const domain = parsedCtx.domain || 'general_med_management';
+  const age = parseInt(parsedCtx.age) || 50;
+  const concern = parsedCtx.chief_concern || 'transcript encounter';
+  const modality = parsedCtx.modality || 'text';
+  const conditions = parsedCtx.known_conditions || [];
+  const medications = parseData && parseData.medications ? parseData.medications : [];
   const id = 'TRANSCRIPT-' + Date.now();
   const concepts = parseData && parseData.concepts ? parseData.concepts.join(', ') : Array.from(new Set(stmts.map(s => s.concept || 'unknown'))).join(', ');
+  const parsedSummary = 'Parsed age ' + age + '; domain ' + domain.replace(/_/g, ' ') + '; PMH ' + (conditions.length ? conditions.join(', ') : 'not stated') + '; meds ' + (medications.length ? medications.join(', ') : 'not stated') + '; concepts ' + concepts + '.';
 
   const customCase = {
     case_id: id,
@@ -3755,7 +3861,7 @@ async function submitTranscriptCardCase() {
     bsg_demonstrates: 'Sentinel and boundary rules run on every imported statement, including untemplated added details.',
     combined_insight: 'The transcript is not treated as a static demo script; it becomes the active encounter payload.',
     parse_proof: {
-      summary: stmts.length + ' transcript turn(s) parsed; concepts: ' + concepts + '. External LLM analysis runs after governed analysis.'
+      summary: stmts.length + ' transcript turn(s) parsed. ' + parsedSummary + ' External LLM analysis runs after governed analysis.'
     },
     case_data: {
       case_id: id,
@@ -3770,7 +3876,7 @@ async function submitTranscriptCardCase() {
         known_conditions: conditions,
       },
       statements: stmts,
-      ground_truth: {},
+      ground_truth: { medications: medications, transcript_imported: true },
     }
   };
   const proof = document.getElementById('quick-transcript-proof');

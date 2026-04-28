@@ -209,6 +209,16 @@ SENTINEL_RULES: List[GuardrailRule] = [
         "ESCALATE",
         "T0_EMERGENCY_OR_HARD_STOP",
     ),
+    GuardrailRule(
+        "SENTINEL_BACK_PAIN_NEURO_BLADDER",
+        "medical_sentinel_off_pathway",
+        r"\b(back pain|lower back|low back|lifting)\b.{0,220}\b(saddle|private areas?|groin|genital|perineal|inner thighs?|leg(?:s)? feel weak|legs?.*weak|foot drop|tingl(?:e|ing)|numb(?:ness)?|bladder|bleeder|urinary retention|can't urinate|cannot urinate|can't pee|cannot pee|can't empty|cannot empty|bowel control)\b|\b(saddle|private areas?|groin|genital|perineal|inner thighs?|leg(?:s)? feel weak|legs?.*weak|foot drop|tingl(?:e|ing)|numb(?:ness)?|bladder|bleeder|urinary retention|can't urinate|cannot urinate|can't pee|cannot pee|can't empty|cannot empty|bowel control)\b.{0,220}\b(back pain|lower back|low back|lifting)\b",
+        1.00,
+        "Back pain with neurologic, saddle/private-area, or bladder/bowel language crosses a cauda-equina-style safety boundary.",
+        "Hard-stop autonomous pathway; urgent clinician review for neurologic deficit and bladder/bowel function.",
+        "ESCALATE",
+        "T0_EMERGENCY_OR_HARD_STOP",
+    ),
 ]
 
 INTEGRITY_RULES: List[GuardrailRule] = [
