@@ -3,7 +3,7 @@
 Covers:
   - Page serving (HTML, 5 screens, JS functions)
   - Cases endpoint (all cases returned, required fields, categories)
-  - Analysis endpoint (13 sections, field validation, escalation, happy path)
+  - Analysis endpoint (14 sections, field validation, escalation, happy path)
   - Feedback endpoint (accepted, invalid rejected)
   - Experience endpoint (priors returned)
   - Suggest-rule/case endpoints (graceful without LLM key)
@@ -23,10 +23,12 @@ from interactive_demo import (
     _memory,
     _jre,
     _guard,
+    _reasoning_guard,
     CASE_NARRATIVES,
     CATEGORY_LABELS,
 )
 from jre import JudgmentReadinessEngine, BlackSwanGuardrailEngine
+from jre.reasoning_integrity import ReasoningIntegrityEngine
 from jre.models import most_restrictive
 from jre.synthetic_data import BASE_CASES
 from jre.black_swan import BLACK_SWAN_CASES
@@ -44,6 +46,7 @@ EXPECTED_SECTION_IDS = [
     "red_flags",
     "jri_score",
     "guardrails",
+    "reasoning_integrity",
     "safety_decision",
     "autonomy_boundary",
     "next_questions",
@@ -297,6 +300,7 @@ class TestAnalysisEndpoint:
         assert recs["human_factors"]["prompt_guardrails"]
         assert recs["ai_processing"]["prompt_contract"]
         assert recs["governance_actions"]
+        assert "reasoning_integrity" in recs
 
     def test_parse_transcript_endpoint_classifies_free_text_concepts(self):
         resp = client.post(
@@ -460,10 +464,18 @@ class TestAnalysisEndpoint:
         provenance = next(s for s in data["sections"] if s["id"] == "provenance_authority")["data"]
         llm_roles = provenance["llm_roles"]
         role_names = {r["role"] for r in llm_roles}
-        assert {"extractor", "boundary", "verifier", "patient_comm", "workflow"} <= role_names
+        assert {"extractor", "boundary", "verifier", "bias_auditor", "patient_comm", "workflow"} <= role_names
         enabled_roles = {r["role"] for r in llm_roles if r["enabled"]}
-        assert {"extractor", "boundary", "verifier"} <= enabled_roles
+        assert {"extractor", "boundary", "verifier", "bias_auditor"} <= enabled_roles
         assert all("authority" in r and "model" in r for r in llm_roles)
+
+        reasoning = next(s for s in data["sections"] if s["id"] == "reasoning_integrity")["data"]
+        bias_ids = {f["bias_id"] for f in reasoning["findings"]}
+        assert "anchoring" in bias_ids
+        assert "premature_closure" in bias_ids
+        assert reasoning["state"] in {"HOLD_AND_VERIFY", "ROUTE_CLINICIAN"}
+        assert any("Cognitive" in f["authority"] for f in reasoning["findings"])
+        assert data["recommendations"]["reasoning_integrity"]["actions"]
 
     def test_defense_pattern_case_has_actionable_human_factor_recommendations(self):
         case = _ALL_CASES["showcase-010-defense-pattern-distortion"]
@@ -942,6 +954,7 @@ class TestSuggestEndpoints:
             assert roles["extractor"]["enabled"] is True
             assert roles["boundary"]["enabled"] is True
             assert roles["verifier"]["enabled"] is True
+            assert roles["bias_auditor"]["enabled"] is True
             assert roles["patient_comm"]["enabled"] is False
             assert roles["workflow"]["enabled"] is False
         finally:
@@ -1041,20 +1054,22 @@ class TestSectionBuilders:
         mem = ExperienceMemory.seeded()
         jre = JudgmentReadinessEngine(memory=mem)
         guard = BlackSwanGuardrailEngine()
+        reasoning = ReasoningIntegrityEngine()
         jre_report = jre.evaluate(case)
         bsg_report = guard.evaluate(case, jre_report)
-        combined = most_restrictive(jre_report.state, bsg_report.guardrail_state)
-        return case, jre_report, bsg_report, combined
+        reasoning_report = reasoning.evaluate(case, jre_report, bsg_report)
+        combined = most_restrictive(most_restrictive(jre_report.state, bsg_report.guardrail_state), reasoning_report.state)
+        return case, jre_report, bsg_report, reasoning_report, combined
 
     def test_eleven_sections_built(self):
-        case, jre_r, bsg_r, combined = self._run_analysis(BASE_CASES[0])
-        sections = _build_progressive_sections(case, jre_r, bsg_r, combined)
+        case, jre_r, bsg_r, ri_r, combined = self._run_analysis(BASE_CASES[0])
+        sections = _build_progressive_sections(case, jre_r, bsg_r, ri_r, combined)
         assert len(sections) == len(EXPECTED_SECTION_IDS)
         assert [s["id"] for s in sections] == EXPECTED_SECTION_IDS
 
     def test_each_section_has_id_title_subtitle_data(self):
-        case, jre_r, bsg_r, combined = self._run_analysis(BASE_CASES[0])
-        sections = _build_progressive_sections(case, jre_r, bsg_r, combined)
+        case, jre_r, bsg_r, ri_r, combined = self._run_analysis(BASE_CASES[0])
+        sections = _build_progressive_sections(case, jre_r, bsg_r, ri_r, combined)
         for s in sections:
             assert "id" in s
             assert "title" in s
@@ -1062,22 +1077,23 @@ class TestSectionBuilders:
             assert "data" in s
 
     def test_observation_confidence_bounded(self):
-        case, jre_r, bsg_r, combined = self._run_analysis(BASE_CASES[0])
-        sections = _build_progressive_sections(case, jre_r, bsg_r, combined)
+        case, jre_r, bsg_r, ri_r, combined = self._run_analysis(BASE_CASES[0])
+        sections = _build_progressive_sections(case, jre_r, bsg_r, ri_r, combined)
         obs_data = next(s for s in sections if s["id"] == "observations")["data"]["observations"]
         for o in obs_data:
             assert 0 <= o["confidence"] <= 1
 
     def test_guardrails_has_autonomy_tier(self):
-        case, jre_r, bsg_r, combined = self._run_analysis(BASE_CASES[0])
-        sections = _build_progressive_sections(case, jre_r, bsg_r, combined)
+        case, jre_r, bsg_r, ri_r, combined = self._run_analysis(BASE_CASES[0])
+        sections = _build_progressive_sections(case, jre_r, bsg_r, ri_r, combined)
         guard_data = next(s for s in sections if s["id"] == "guardrails")["data"]
         assert "max_autonomy_tier" in guard_data
         assert guard_data["max_autonomy_tier"].startswith("T")
 
     def test_safety_decision_driver_present(self):
-        case, jre_r, bsg_r, combined = self._run_analysis(BASE_CASES[0])
-        sections = _build_progressive_sections(case, jre_r, bsg_r, combined)
+        case, jre_r, bsg_r, ri_r, combined = self._run_analysis(BASE_CASES[0])
+        sections = _build_progressive_sections(case, jre_r, bsg_r, ri_r, combined)
         dec_data = next(s for s in sections if s["id"] == "safety_decision")["data"]
         assert "decision_driver" in dec_data
+        assert "reasoning_state" in dec_data
         assert len(dec_data["decision_driver"]) > 0

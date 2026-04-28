@@ -76,10 +76,13 @@ The deployed interactive demo no longer represents the LLM as one generic
   which falsifiers are still missing.
 - `verifier`: adversarial audit for ignored transcript lines, false negatives,
   and unsafe reassurance.
+- `bias_auditor`: cognitive-bias audit for anchoring, premature closure,
+  confirmation bias, omission bias, diagnostic momentum, framing risk, and
+  overconfidence.
 - `patient_comm`: post-governor patient-language drafting only.
 - `workflow`: post-governor clinician/workflow synthesis only.
 
-The default async safety pass runs `extractor,boundary,verifier` in parallel.
+The default async safety pass runs `extractor,boundary,verifier,bias_auditor` in parallel.
 All LLM roles are advisory. They can propose review targets and missing
 falsifiers, but they cannot authorize care, downgrade a guardrail, prescribe,
 close a case, or independently create the final autonomy boundary.
@@ -87,13 +90,14 @@ close a case, or independently create the final autonomy boundary.
 Role-specific model configuration is exposed through environment variables:
 
 ```text
-OPENROUTER_ANALYSIS_ROLES=extractor,boundary,verifier
+OPENROUTER_ANALYSIS_ROLES=extractor,boundary,verifier,bias_auditor
 OPENROUTER_EXTRACTOR_MODEL=qwen/qwen3.6-flash
 OPENROUTER_BOUNDARY_MODEL=qwen/qwen3.6-flash
 OPENROUTER_VERIFIER_MODEL=qwen/qwen3.6-flash
+OPENROUTER_BIAS_MODEL=qwen/qwen3.6-flash
 OPENROUTER_PATIENT_MODEL=qwen/qwen3.6-flash
 OPENROUTER_WORKFLOW_MODEL=qwen/qwen3.6-flash
-OPENROUTER_MAX_PARALLEL_ROLES=3
+OPENROUTER_MAX_PARALLEL_ROLES=4
 ```
 
 The UI shows role, model, purpose, and authority so a technical reviewer can see
@@ -176,8 +180,9 @@ The deployed app now enforces these demo-level guarantees:
 3. Unknown or unmapped observations are not neutral; they create review findings
    and cannot support closure.
 4. Missing data is not treated as absent data.
-5. LLM findings are candidate signals only.
-6. The most-restrictive governor combines JRE and BSG states before any final
+5. Reasoning-integrity findings create cognitive forcing actions, not clinician-blame labels.
+6. LLM findings are candidate signals only.
+7. The most-restrictive governor combines JRE, BSG, and reasoning-integrity states before any final
    recommendation is rendered.
 
 ## Future extension

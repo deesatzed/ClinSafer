@@ -143,28 +143,32 @@ cp .env.example .env
 ```
 
 The interactive demo uses bounded LLM roles. The default async safety pass runs
-`extractor,boundary,verifier` in parallel. Patient communication and workflow
-synthesis roles are configured but disabled by default because they are
-post-governor drafting roles, not safety authorities.
+`extractor,boundary,verifier,bias_auditor` in parallel. The bias auditor looks
+for reasoning-path failure modes such as anchoring, premature closure,
+confirmation bias, omission bias, diagnostic momentum, and overconfidence.
+Patient communication and workflow synthesis roles are configured but disabled
+by default because they are post-governor drafting roles, not safety authorities.
 
 ```bash
-OPENROUTER_ANALYSIS_ROLES=extractor,boundary,verifier
+OPENROUTER_ANALYSIS_ROLES=extractor,boundary,verifier,bias_auditor
 OPENROUTER_EXTRACTOR_MODEL=qwen/qwen3.6-flash
 OPENROUTER_BOUNDARY_MODEL=qwen/qwen3.6-flash
 OPENROUTER_VERIFIER_MODEL=qwen/qwen3.6-flash
+OPENROUTER_BIAS_MODEL=qwen/qwen3.6-flash
 OPENROUTER_PATIENT_MODEL=qwen/qwen3.6-flash
 OPENROUTER_WORKFLOW_MODEL=qwen/qwen3.6-flash
-OPENROUTER_MAX_PARALLEL_ROLES=3
+OPENROUTER_MAX_PARALLEL_ROLES=4
 OPENROUTER_TIMEOUT_SECONDS=75
 ```
 
 On Fly, these are normal secrets:
 
 ```bash
-flyctl secrets set OPENROUTER_ANALYSIS_ROLES=extractor,boundary,verifier
+flyctl secrets set OPENROUTER_ANALYSIS_ROLES=extractor,boundary,verifier,bias_auditor
 flyctl secrets set OPENROUTER_EXTRACTOR_MODEL=qwen/qwen3.6-flash
 flyctl secrets set OPENROUTER_BOUNDARY_MODEL=qwen/qwen3.6-flash
 flyctl secrets set OPENROUTER_VERIFIER_MODEL=qwen/qwen3.6-flash
+flyctl secrets set OPENROUTER_BIAS_MODEL=qwen/qwen3.6-flash
 ```
 
 LLM findings remain advisory. Curated rules, guardrails, and the ensemble
@@ -215,15 +219,16 @@ language and reasoning assistants whose outputs remain advisory until validated.
 The safety system would be:
 
 1. **Transcript parser and input coverage audit** — proves every line was consumed or explicitly held for review.
-2. **Bounded multi-role LLM pipeline** — extractor, boundary reasoner, and verifier propose candidate observations, coverage gaps, and missing falsifiers.
+2. **Bounded multi-role LLM pipeline** — extractor, boundary reasoner, verifier, and bias auditor propose candidate observations, coverage gaps, missing falsifiers, and cognitive forcing actions.
 3. **Expert-system shell** — verifies required slots, red flags, contradictions, and remote boundaries.
-4. **Uncertainty model** — confidence, missingness, distortion, and source reliability.
-5. **Experience memory** — learns which questions expose hidden risk in which patient/context patterns.
-6. **Stigmergic boundary trace** — keeps unresolved claims, source conflicts, stale data, social/workflow pressure, and feedback from disappearing between turns.
-7. **VAMS-style near-miss recall** — recalls prior boundary failures from partial case signatures and suggests missing nodes or falsifiers.
-8. **Governance queue** — promotes learned rules/templates only after validation, simulation, and review.
-9. **Arbiter** — decides whether the case is ready, needs clarification, needs objective data, or must escalate.
-10. **Provider UI** — shows the boundary map and rule trace, not just a note summary.
+4. **Reasoning integrity guard** — audits for anchoring, premature closure, confirmation bias, search satisficing, omission bias, diagnostic momentum, framing risk, and overconfidence.
+5. **Uncertainty model** — confidence, missingness, distortion, and source reliability.
+6. **Experience memory** — learns which questions expose hidden risk in which patient/context patterns.
+7. **Stigmergic boundary trace** — keeps unresolved claims, source conflicts, stale data, social/workflow pressure, and feedback from disappearing between turns.
+8. **VAMS-style near-miss recall** — recalls prior boundary failures from partial case signatures and suggests missing nodes or falsifiers.
+9. **Governance queue** — promotes learned rules/templates only after validation, simulation, and review.
+10. **Arbiter** — decides whether the case is ready, needs clarification, needs objective data, or must escalate.
+11. **Provider UI** — shows the boundary map and rule trace, not just a note summary.
 
 This is designed to be inserted into a telehealth or autonomous-intake pipeline before refills, triage, symptom assessment, or chronic disease check-ins.
 

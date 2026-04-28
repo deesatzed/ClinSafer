@@ -51,7 +51,9 @@ Current real capabilities:
   - fast semantic extractor,
   - clinical boundary reasoner,
   - adversarial verifier,
+  - cognitive bias auditor,
   - post-governor patient/workflow roles configured but disabled by default.
+- Deterministic Reasoning Integrity Check for anchoring, premature closure, confirmation bias, search satisficing, omission bias, diagnostic momentum, framing risk, availability bias, and overconfidence.
 - Final Recommendations page synthesized from actual analysis output, including a Human Factors Boundary that turns defense/disclosure cues into concrete inference limits, next-question strategy, and LLM prompt constraints.
 - Governance review and clinician feedback memory prototype.
 
@@ -60,7 +62,7 @@ Verification performed:
 - Full local test suite: `334 passed`.
 - Live deployed API accepted arbitrary pasted-style encounter data with no pre-tagged concepts.
 - Live deployed API returned `ESCALATE` and `T0_EMERGENCY_OR_HARD_STOP` for the cost-fear exertional chest-discomfort case.
-- Live deployed LLM endpoint returned candidate findings from `extractor`, `boundary`, and `verifier` roles using `qwen/qwen3.6-flash`.
+- Live deployed LLM endpoint returned candidate findings from `extractor`, `boundary`, and `verifier` roles using `qwen/qwen3.6-flash`; the current implementation adds `bias_auditor` as the fourth default role.
 
 ## What Must Not Be Oversold
 
@@ -69,6 +71,7 @@ Be precise:
 - The deterministic expert-system and guardrail layers are implemented.
 - The paste/edit/analyze workflow is implemented.
 - The external multi-role LLM candidate pipeline is implemented and bounded as advisory.
+- The deterministic reasoning-integrity layer is implemented as cognitive forcing, not clinician-blame.
 - The experience memory is implemented as a small in-memory prototype.
 - The VAMS/stigmergic layer should be described as governed memory hooks and a prototype recall/trace design, not as a production Hopfield/VAMS memory system.
 - The domains are safety-template coverage scaffolds, not production clinical protocols.
@@ -96,10 +99,11 @@ INTERVIEW_DEMO_CHEAT_SHEET.md
 6. Show `Statement vs Fact`.
 7. Show `Provenance & Authority`.
 8. In `Provenance & Authority`, point to the bounded LLM roles and say: "The models propose; the governor disposes."
-9. Show `Known Unknowns Map`.
-10. Show `Safety Decision` and `Autonomy Boundary`.
-11. Open `Final Recommendations`.
-12. Show `Governance Review` only after the core point is understood.
+9. Show `Reasoning Integrity Check` and frame it as "known diagnostic failure modes, converted into forcing questions."
+10. Show `Known Unknowns Map`.
+11. Show `Safety Decision` and `Autonomy Boundary`.
+12. Open `Final Recommendations`.
+13. Show `Governance Review` only after the core point is understood.
 
 Suggested opening:
 

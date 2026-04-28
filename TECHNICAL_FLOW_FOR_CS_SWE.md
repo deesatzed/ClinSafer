@@ -29,6 +29,7 @@ Raw transcript or CaseInput
   -> JudgmentReadinessEngine.evaluate()
   -> BlackSwanGuardrailEngine.evaluate()
   -> most_restrictive(JRE state, BSG state)
+  -> ReasoningIntegrityEngine.evaluate()
   -> async multi-role LLM candidate pipeline
   -> interactive demo sections
 ```
@@ -260,6 +261,11 @@ boundary
 verifier
   -> adversarially audit for ignored lines, false negatives, premature closure,
      and unsafe reassurance
+
+bias_auditor
+  -> audit the reasoning path for anchoring, premature closure, confirmation
+     bias, search satisficing, omission bias, diagnostic momentum, framing risk,
+     and overconfidence
 ```
 
 Configured but disabled by default:
@@ -275,13 +281,14 @@ workflow
 Role-specific model variables:
 
 ```text
-OPENROUTER_ANALYSIS_ROLES=extractor,boundary,verifier
+OPENROUTER_ANALYSIS_ROLES=extractor,boundary,verifier,bias_auditor
 OPENROUTER_EXTRACTOR_MODEL=qwen/qwen3.6-flash
 OPENROUTER_BOUNDARY_MODEL=qwen/qwen3.6-flash
 OPENROUTER_VERIFIER_MODEL=qwen/qwen3.6-flash
+OPENROUTER_BIAS_MODEL=qwen/qwen3.6-flash
 OPENROUTER_PATIENT_MODEL=qwen/qwen3.6-flash
 OPENROUTER_WORKFLOW_MODEL=qwen/qwen3.6-flash
-OPENROUTER_MAX_PARALLEL_ROLES=3
+OPENROUTER_MAX_PARALLEL_ROLES=4
 ```
 
 Authority rule:
@@ -296,7 +303,66 @@ The UI exposes role, model, purpose, and authority. This is intentional: a
 reviewer should be able to distinguish "the model noticed this" from "the
 governed software is allowed to act on this."
 
-## 7. Input Coverage Audit
+## 7. Reasoning Integrity / Cognitive Bias Guard
+
+The deployed app now includes a deterministic `ReasoningIntegrityEngine`.
+It audits the reasoning path rather than the clinician. The output is phrased as
+cognitive forcing, not blame.
+
+Initial implemented bias families:
+
+```text
+anchoring
+premature_closure
+confirmation_bias
+search_satisficing
+availability_bias
+omission_bias
+diagnostic_momentum
+overconfidence
+framing_ascertainment
+```
+
+Each finding contains:
+
+```text
+bias_id
+label
+severity
+evidence
+reasoning_failure
+cognitive_forcing_action
+disconfirming_question
+affected_autonomy
+authority
+```
+
+State behavior:
+
+```text
+no finding -> ALLOW_WITH_AUDIT
+moderate/high finding -> HOLD_AND_VERIFY
+high finding + unresolved safety gap -> ROUTE_CLINICIAN
+```
+
+The combined governor now evaluates:
+
+```text
+most_restrictive(JRE state, BSG state, Reasoning Integrity state)
+```
+
+This is the Croskerry/dual-process support layer: System 1-prone pathways get
+explicit forcing functions before closure or reassurance.
+
+Conceptual basis:
+
+- Pat Croskerry's clinical decision-making and cognitive forcing work.
+- Dual-process reasoning: fast Type/System 1 pattern matching vs slower
+  Type/System 2 analytic verification.
+- Telemedicine-specific anchoring risk from asynchronous store-and-forward
+  workflows, cue limitation, and information breadth/overload.
+
+## 8. Input Coverage Audit
 
 Every encounter line is audited before the analysis is presented.
 
@@ -326,7 +392,7 @@ This is the mitigation for the failure mode where a clinically important line is
 added by a user, mislabeled, and then ignored by downstream analysis.
 - critical missingness lens.
 
-## 8. Black Swan Guardrail Ensemble
+## 9. Black Swan Guardrail Ensemble
 
 The BSG layer is a second ensemble around the JRE.
 
@@ -371,7 +437,7 @@ Final = FAIL_CLOSED
 
 This is a safety-critical monotonic constraint: the less permissive layer wins.
 
-## 9. Question Selection
+## 10. Question Selection
 
 Question selection is currently deterministic plus learned yield priors.
 
@@ -397,7 +463,7 @@ Then it sorts and selects top questions.
 
 Experience memory provides `expected_question_yield`, seeded and updated by EMA.
 
-## 10. Current Learning
+## 11. Current Learning
 
 The current learning layer is limited but real.
 
@@ -422,7 +488,7 @@ governed experiential calibration
 
 It changes priors and question yield, not autonomous clinical policy.
 
-## 11. Dynamic ESS Node Creation: Proposed Next Architecture
+## 12. Dynamic ESS Node Creation: Proposed Next Architecture
 
 The next architecture should add an AI-generated expert-system planning layer.
 
@@ -469,7 +535,7 @@ Example dynamic node:
 }
 ```
 
-## 12. How To Decide Node Ranges
+## 13. How To Decide Node Ranges
 
 Node ranges should be chosen by evidence type, not one generic confidence score.
 
@@ -519,7 +585,7 @@ Example:
   autonomy effect: cannot renew autonomously
 ```
 
-## 13. Distribution Selection Heuristic
+## 14. Distribution Selection Heuristic
 
 A dynamic ESS planner should choose distribution type like this:
 
@@ -542,7 +608,7 @@ elif repeated events matter:
     count / rate model
 ```
 
-## 14. Validator Layer
+## 15. Validator Layer
 
 AI-generated nodes and rules need validators.
 
@@ -568,7 +634,7 @@ Expert software validates and executes.
 Governance promotes or rejects.
 ```
 
-## 15. Future Ensemble With Dynamic Nodes
+## 16. Future Ensemble With Dynamic Nodes
 
 The future ensemble should combine several model families:
 
@@ -617,7 +683,7 @@ FAIL_CLOSED
 ESCALATE
 ```
 
-## 16. Stigmergic Processing
+## 17. Stigmergic Processing
 
 The proposed stigmergic layer adds memory as a trace field.
 
@@ -657,7 +723,7 @@ Patient says "BP is fine"
 
 This fills the gap where one weak signal is not enough, but multiple weak signals should accumulate.
 
-## 17. VAMS / Hopfield Memory Processing
+## 18. VAMS / Hopfield Memory Processing
 
 The proposed VAMS layer is associative memory for near-miss shapes.
 
@@ -719,7 +785,7 @@ block autonomous refill until verified
 
 But deterministic ESS / BSG still enforce the final autonomy cap.
 
-## 18. Falsifier Processing
+## 19. Falsifier Processing
 
 The falsifier layer answers:
 
@@ -744,7 +810,7 @@ if unresolved:
 
 This converts safety from vague refusal to operational closure.
 
-## 19. Final System Methodology
+## 20. Final System Methodology
 
 A strong final architecture would be:
 
@@ -760,30 +826,33 @@ A strong final architecture would be:
 9. Run bounded multi-role LLM candidate pipeline:
    - extractor,
    - boundary,
-   - verifier.
-10. Ask AI planner for dynamic nodes/ranges/distributions when static coverage is insufficient.
-11. Validate AI-proposed graph.
-12. Evaluate node distributions.
-13. Run JRE readiness ensemble.
-14. Run BSG assumption-sufficiency ensemble.
-15. Deposit signals into stigmergic boundary trace.
-16. Encode boundary signature for VAMS recall.
-17. Recall near-miss analogues and complete missing pattern.
-18. Generate falsifiers and next-best questions.
-19. Apply most-restrictive autonomy governor.
-20. Render provider/executive UX:
+   - verifier,
+   - bias_auditor.
+10. Run deterministic reasoning-integrity / cognitive-bias guard.
+11. Ask AI planner for dynamic nodes/ranges/distributions when static coverage is insufficient.
+12. Validate AI-proposed graph.
+13. Evaluate node distributions.
+14. Run JRE readiness ensemble.
+15. Run BSG assumption-sufficiency ensemble.
+16. Deposit signals into stigmergic boundary trace.
+17. Encode boundary signature for VAMS recall.
+18. Recall near-miss analogues and complete missing pattern.
+19. Generate falsifiers and next-best questions.
+20. Apply most-restrictive autonomy governor.
+21. Render provider/executive UX:
     - statement vs fact
     - input coverage audit
     - model/role provenance
     - known unknowns
     - assumption register
+    - reasoning integrity check
     - autonomy boundary
     - next questions
     - operational value
     - mitigation plan
-21. Capture clinician feedback.
-22. Update experience memory, VAMS acceptance, trace priors.
-23. Queue proposed template/rule changes for governance.
+22. Capture clinician feedback.
+23. Update experience memory, VAMS acceptance, trace priors.
+24. Queue proposed template/rule changes for governance.
 ```
 
 ## Technical Thesis

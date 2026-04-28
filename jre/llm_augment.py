@@ -163,6 +163,14 @@ ROLE_CONFIGS: Dict[str, LLMRoleConfig] = {
         authority="Advisory only. Can force review, never downgrade a guardrail.",
         default_enabled=True,
     ),
+    "bias_auditor": LLMRoleConfig(
+        key="bias_auditor",
+        label="Cognitive bias auditor",
+        env_var="OPENROUTER_BIAS_MODEL",
+        purpose="Detect anchoring, premature closure, confirmation bias, omission bias, diagnostic momentum, and overconfidence risks in the reasoning path.",
+        authority="Advisory only. Can propose cognitive forcing actions, never accuse a clinician or change disposition.",
+        default_enabled=True,
+    ),
     "patient_comm": LLMRoleConfig(
         key="patient_comm",
         label="Patient communication drafter",
@@ -206,6 +214,23 @@ Look for:
 - LLM or rule outputs that could tempt unsafe reassurance
 
 Return only issues that should be reviewed or validated. Do not authorize care.""",
+    "bias_auditor": _SYSTEM_PROMPT
+    + """
+
+You are running the cognitive-bias audit pass for a telemedicine safety system.
+Do not label a clinician as biased. Audit the reasoning pathway for known
+diagnostic failure modes:
+- anchoring on the chief complaint, referral note, prior label, patient goal, or first plausible diagnosis
+- premature closure before dangerous alternatives are falsified
+- confirmation bias from reassuring answers or denial language
+- search satisficing after one explanation is found
+- omission bias where remote uncertainty makes inaction feel safer than routing
+- diagnostic momentum from prior notes or previous labels
+- overconfidence when the summary is coherent but evidence is incomplete
+- framing or ascertainment risk from identity, utilization, or stereotype language
+
+For each finding, include the exact evidence and a cognitive forcing action.
+Return candidate findings only. Do not diagnose, reassure, authorize, or downgrade.""",
     "patient_comm": """You draft patient-facing language only after a governed clinical decision exists.
 Find communication risks: shame, fear, cost pressure, denial, or language that could cause abandonment.
 Return JSON findings using the same schema. Do not change the clinical disposition.""",
@@ -382,7 +407,7 @@ class LLMDetector:
         if not selected:
             selected = ["extractor"]
 
-        max_workers = min(len(selected), int(os.environ.get("OPENROUTER_MAX_PARALLEL_ROLES", "3")))
+        max_workers = min(len(selected), int(os.environ.get("OPENROUTER_MAX_PARALLEL_ROLES", "4")))
         results: Dict[str, LLMAnalysisResult] = {}
         with ThreadPoolExecutor(max_workers=max_workers) as pool:
             future_to_role = {pool.submit(self.analyze_case, case, role): role for role in selected}

@@ -9,6 +9,11 @@ from .black_swan import (
     BlackSwanGuardrailEngine, BLACK_SWAN_CASES,
     guardrail_report_to_markdown, GuardrailReport,
 )
+from .reasoning_integrity import (
+    ReasoningIntegrityEngine,
+    ReasoningIntegrityReport,
+    ReasoningBiasFinding,
+)
 from .synthetic_data import BASE_CASES
 
 __all__ = [
@@ -30,5 +35,8 @@ __all__ = [
     "BLACK_SWAN_CASES",
     "guardrail_report_to_markdown",
     "GuardrailReport",
+    "ReasoningIntegrityEngine",
+    "ReasoningIntegrityReport",
+    "ReasoningBiasFinding",
     "BASE_CASES",
 ]

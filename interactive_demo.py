@@ -34,6 +34,8 @@ except ImportError:
 from jre import (
     JudgmentReadinessEngine,
     BlackSwanGuardrailEngine,
+    ReasoningIntegrityEngine,
+    ReasoningIntegrityReport,
     BLACK_SWAN_CASES,
     ExperienceMemory,
 )
@@ -96,6 +98,7 @@ app.add_middleware(
 _memory = ExperienceMemory.seeded()
 _jre = JudgmentReadinessEngine(memory=_memory)
 _guard = BlackSwanGuardrailEngine()
+_reasoning_guard = ReasoningIntegrityEngine()
 
 # ---------------------------------------------------------------------------
 # Pydantic models
@@ -1023,6 +1026,7 @@ def _build_guardrails_section(
 def _build_safety_decision_section(
     jre_report: ReadinessReport,
     bsg_report: GuardrailReport,
+    reasoning_report: ReasoningIntegrityReport,
     combined_state: str,
 ) -> Dict[str, Any]:
     """Section 6: Combined Safety Decision."""
@@ -1037,13 +1041,20 @@ def _build_safety_decision_section(
         if bsg_report.guardrail_state in STATE_PRIORITY
         else len(STATE_PRIORITY)
     )
+    ri_idx = (
+        STATE_PRIORITY.index(reasoning_report.state)
+        if reasoning_report.state in STATE_PRIORITY
+        else len(STATE_PRIORITY)
+    )
 
-    if jre_idx < bsg_idx:
+    if jre_idx <= bsg_idx and jre_idx <= ri_idx:
         driver = "Judgment Readiness Engine (clinical signal)"
-    elif bsg_idx < jre_idx:
+    elif bsg_idx <= jre_idx and bsg_idx <= ri_idx:
         driver = "Black Swan Guard (system safety)"
+    elif ri_idx <= jre_idx and ri_idx <= bsg_idx:
+        driver = "Reasoning Integrity Check (cognitive forcing)"
     else:
-        driver = "Both engines agree"
+        driver = "Governed layers agree"
 
     # What would happen next
     next_actions = {
@@ -1060,11 +1071,12 @@ def _build_safety_decision_section(
     return {
         "id": "safety_decision",
         "title": "Safety Decision",
-        "subtitle": "The combined verdict from both engines.",
+        "subtitle": "The combined verdict from clinical readiness, guardrails, and reasoning-integrity checks.",
         "data": {
             "combined_state": combined_state,
             "jre_state": jre_report.state,
             "bsg_state": bsg_report.guardrail_state,
+            "reasoning_state": reasoning_report.state,
             "decision_driver": driver,
             "next_action": next_actions.get(
                 combined_state, "Refer to clinical governance."
@@ -1073,6 +1085,41 @@ def _build_safety_decision_section(
             "autonomy_description": AUTONOMY_TIERS.get(
                 bsg_report.max_autonomy_tier, ""
             ),
+        },
+    }
+
+
+def _build_reasoning_integrity_section(
+    reasoning_report: ReasoningIntegrityReport,
+) -> Dict[str, Any]:
+    """Section: cognitive-bias guard and forcing functions."""
+    return {
+        "id": "reasoning_integrity",
+        "title": "Reasoning Integrity Check",
+        "subtitle": "Cognitive forcing against anchoring, premature closure, confirmation bias, omission bias, and overconfidence.",
+        "data": {
+            "state": reasoning_report.state,
+            "summary": reasoning_report.provider_summary,
+            "patient_safe_summary": reasoning_report.patient_safe_summary,
+            "findings": [
+                {
+                    "bias_id": f.bias_id,
+                    "label": f.label,
+                    "severity": round(f.severity, 2),
+                    "evidence": f.evidence,
+                    "reasoning_failure": f.reasoning_failure,
+                    "cognitive_forcing_action": f.cognitive_forcing_action,
+                    "disconfirming_question": f.disconfirming_question,
+                    "affected_autonomy": f.affected_autonomy,
+                    "authority": f.authority,
+                }
+                for f in reasoning_report.findings
+            ],
+            "invariants": [
+                "This layer audits the reasoning path, not the clinician's character.",
+                "A bias finding creates a cognitive forcing action or verification target; it does not diagnose the patient.",
+                "Reasoning-integrity findings can cap autonomy only through the governed most-restrictive state.",
+            ],
         },
     }
 
@@ -1242,6 +1289,7 @@ def _build_final_recommendations(
     case: CaseInput,
     jre_report: ReadinessReport,
     bsg_report: GuardrailReport,
+    reasoning_report: ReasoningIntegrityReport,
     combined_state: str,
 ) -> Dict[str, Any]:
     """Actionable final page synthesized from analysis and governance outputs."""
@@ -1256,6 +1304,15 @@ def _build_final_recommendations(
     top_findings = sorted(jre_report.findings, key=lambda x: -x.severity)[:6]
     top_guardrails = sorted(bsg_report.findings, key=lambda x: -x.severity)[:4]
     human_boundary = _build_human_factor_boundary(case, jre_report, bsg_report)
+    reasoning_actions = [
+        {
+            "bias": f.label,
+            "action": f.cognitive_forcing_action,
+            "question": f.disconfirming_question,
+            "autonomy_effect": f.affected_autonomy,
+        }
+        for f in reasoning_report.findings[:3]
+    ]
 
     jre_evidence = [
         {
@@ -1405,6 +1462,11 @@ def _build_final_recommendations(
         "next_questions": next_questions,
         "patient_message": patient_message,
         "human_factors": human_boundary,
+        "reasoning_integrity": {
+            "state": reasoning_report.state,
+            "summary": reasoning_report.provider_summary,
+            "actions": reasoning_actions,
+        },
         "governance_actions": governance_actions,
         "ai_processing": ai_processing,
         "quality_metrics": [
@@ -1429,6 +1491,7 @@ def _build_provenance_authority_section(
     case: CaseInput,
     jre_report: ReadinessReport,
     bsg_report: GuardrailReport,
+    reasoning_report: ReasoningIntegrityReport,
     combined_state: str,
 ) -> Dict[str, Any]:
     """Section: show what is curated, AI-derived, learned, or memory-only."""
@@ -1492,6 +1555,13 @@ def _build_provenance_authority_section(
             "effect": "Can suggest review targets, but cannot independently authorize or hard-stop action.",
         },
         {
+            "name": "Reasoning integrity guard",
+            "authority": "Cognitive Forcing",
+            "count": len(reasoning_report.findings),
+            "examples": [f.label for f in reasoning_report.findings[:3]],
+            "effect": "Can cap autonomy through hold/verify or clinician routing when known reasoning failure modes are paired with unresolved evidence.",
+        },
+        {
             "name": "Learned priors",
             "authority": "Bounded Adjustment",
             "count": len(learned_observations) + len(learned_questions),
@@ -1543,6 +1613,11 @@ def _build_provenance_authority_section(
                     "layer": "Black Swan Guard",
                     "state": bsg_report.guardrail_state,
                     "authority": "Enforced operating-envelope state",
+                },
+                {
+                    "layer": "Reasoning Integrity",
+                    "state": reasoning_report.state,
+                    "authority": "Cognitive-forcing state",
                 },
                 {
                     "layer": "Combined governor",
@@ -1972,6 +2047,7 @@ def _build_progressive_sections(
     case: CaseInput,
     jre_report: ReadinessReport,
     bsg_report: GuardrailReport,
+    reasoning_report: ReasoningIntegrityReport,
     combined_state: str,
     llm_result=None,
 ) -> List[Dict[str, Any]]:
@@ -1979,13 +2055,14 @@ def _build_progressive_sections(
     return [
         _build_input_coverage_section(case, jre_report, bsg_report),
         _build_interpretation_boundaries_section(case, jre_report),
-        _build_provenance_authority_section(case, jre_report, bsg_report, combined_state),
+        _build_provenance_authority_section(case, jre_report, bsg_report, reasoning_report, combined_state),
         _build_observations_section(jre_report),
         _build_mud_map_section(jre_report),
         _build_red_flags_section(jre_report),
         _build_jri_section(jre_report),
         _build_guardrails_section(bsg_report),
-        _build_safety_decision_section(jre_report, bsg_report, combined_state),
+        _build_reasoning_integrity_section(reasoning_report),
+        _build_safety_decision_section(jre_report, bsg_report, reasoning_report, combined_state),
         _build_autonomy_boundary_section(case, jre_report, bsg_report, combined_state),
         _build_questions_section(jre_report, case, combined_state),
         _build_mitigation_plan_section(case, jre_report, bsg_report, combined_state),
@@ -2036,13 +2113,17 @@ def analyze_case(req: AnalyzeRequest):
 
     jre_report = _jre.evaluate(case)
     bsg_report = _guard.evaluate(case, jre_report)
-    combined_state = most_restrictive(jre_report.state, bsg_report.guardrail_state)
+    reasoning_report = _reasoning_guard.evaluate(case, jre_report, bsg_report)
+    combined_state = most_restrictive(
+        most_restrictive(jre_report.state, bsg_report.guardrail_state),
+        reasoning_report.state,
+    )
 
     # LLM is NOT called here — Section 8 reports llm_available status
     # and the browser can trigger LLM analysis separately if desired.
     # This keeps analysis fast and deterministic for the progressive reveal.
     sections = _build_progressive_sections(
-        case, jre_report, bsg_report, combined_state, llm_result=None
+        case, jre_report, bsg_report, reasoning_report, combined_state, llm_result=None
     )
     duration_ms = (time.monotonic() - start) * 1000
 
@@ -2052,7 +2133,7 @@ def analyze_case(req: AnalyzeRequest):
         "duration_ms": round(duration_ms, 1),
         "summary": _build_demo_summary(case, jre_report, bsg_report, combined_state),
         "recommendations": _build_final_recommendations(
-            case, jre_report, bsg_report, combined_state
+            case, jre_report, bsg_report, reasoning_report, combined_state
         ),
         "sections": sections,
     }
@@ -4208,6 +4289,7 @@ function renderSectionBody(section) {
     case 'red_flags': el.innerHTML = renderRedFlags(section.data); break;
     case 'jri_score': el.innerHTML = renderJRI(section.data); break;
     case 'guardrails': el.innerHTML = renderGuardrails(section.data); break;
+    case 'reasoning_integrity': el.innerHTML = renderReasoningIntegrity(section.data); break;
     case 'safety_decision': el.innerHTML = renderSafetyDecision(section.data); break;
     case 'provenance_authority': el.innerHTML = renderProvenanceAuthority(section.data); break;
     case 'autonomy_boundary': el.innerHTML = renderAutonomyBoundary(section.data); break;
@@ -4284,6 +4366,15 @@ function renderRecommendations(data) {
   h += '</div>';
 
   h += '<div class="recommendation-card"><h3>Patient-Facing Message</h3><div class="patient-script">' + esc(data.patient_message || '') + '</div></div>';
+
+  if (data.reasoning_integrity && (data.reasoning_integrity.actions || []).length) {
+    h += '<div class="recommendation-card"><h3>Reasoning Integrity / Cognitive Forcing</h3>';
+    h += '<div class="medical-director-note" style="margin-bottom:10px;">' + esc(data.reasoning_integrity.summary || '') + '</div>';
+    for (const a of data.reasoning_integrity.actions || []) {
+      h += '<div class="evidence-row"><strong>' + esc(a.bias || '') + '</strong><br>' + esc(a.action || '') + '<br><span style="color:var(--text-dim)">' + esc(a.question || '') + '</span></div>';
+    }
+    h += '</div>';
+  }
 
   h += '<div class="clinician-action-layout">';
   h += '<div class="recommendation-card"><h3>Next Questions / Routing Support</h3>';
@@ -4511,6 +4602,27 @@ function renderGuardrails(data) {
   return h;
 }
 
+function renderReasoningIntegrity(data) {
+  let h = '<div style="margin-bottom:12px;"><span class="state-badge state-' + esc(data.state || 'ALLOW_WITH_AUDIT') + '">' + esc(String(data.state || '').replace(/_/g, ' ')) + '</span> <span style="font-size:13px;margin-left:8px;">' + esc(data.summary || '') + '</span></div>';
+  if (!(data.findings || []).length) {
+    h += '<div class="empty-state">No major cognitive forcing concern detected.</div>';
+  }
+  for (const f of data.findings || []) {
+    h += '<div class="red-flag-item" style="border-left-color:var(--purple);background:#f8f4ff;">';
+    h += '<div class="rf-concept">' + esc(f.label) + ' ' + authorityChip(f.authority) + ' <span style="font-size:12px;color:var(--text-dim);">severity ' + Number(f.severity || 0).toFixed(2) + '</span></div>';
+    h += '<div class="rf-reason"><strong>Reasoning failure:</strong> ' + esc(f.reasoning_failure || '') + '</div>';
+    h += '<div style="font-size:13px;margin-top:6px;"><strong>Cognitive forcing action:</strong> ' + esc(f.cognitive_forcing_action || '') + '</div>';
+    h += '<div style="font-size:13px;margin-top:6px;"><strong>Disconfirming question:</strong> ' + esc(f.disconfirming_question || '') + '</div>';
+    h += '<div style="font-size:12px;color:var(--text-dim);margin-top:6px;"><strong>Evidence:</strong> ' + esc(String(f.evidence || '').substring(0, 220)) + '</div>';
+    h += '<div style="font-size:12px;color:var(--text-dim);margin-top:4px;"><strong>Autonomy effect:</strong> ' + esc(f.affected_autonomy || '') + '</div>';
+    h += '</div>';
+  }
+  h += '<ul class="invariant-list">';
+  for (const inv of data.invariants || []) h += '<li>' + esc(inv) + '</li>';
+  h += '</ul>';
+  return h;
+}
+
 function renderSafetyDecision(data) {
   const stateColors = {
     ESCALATE:'var(--red-bg)', FAIL_CLOSED:'var(--red-bg)',
@@ -4524,6 +4636,7 @@ function renderSafetyDecision(data) {
   h += '<div style="display:flex;gap:8px;justify-content:center;margin-bottom:12px;">';
   h += '<span class="state-badge state-' + data.jre_state + '">JRE: ' + data.jre_state + '</span>';
   h += '<span class="state-badge state-' + data.bsg_state + '">BSG: ' + data.bsg_state + '</span>';
+  h += '<span class="state-badge state-' + data.reasoning_state + '">Reasoning: ' + data.reasoning_state + '</span>';
   h += '</div>';
   h += '</div>';
   h += '<div class="decision-action"><strong>Next Action:</strong> ' + esc(data.next_action) + '</div>';

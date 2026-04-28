@@ -3,7 +3,7 @@
 **Updated:** 2026-04-28
 **Repo:** `https://github.com/deesatzed/ClinSafer.git`
 **Live app:** `https://clinsafer.fly.dev/`
-**Latest implemented commit:** `7d2e524 Add bounded multi-role LLM pipeline`
+**Latest implemented commit:** pending current cognitive-bias layer commit
 
 This is an interview/demo artifact, not a clinical protocol, medical device, or
 production triage system.
@@ -35,6 +35,10 @@ The core safety invariant is:
 - Input Coverage Audit for every submitted line.
 - Deterministic Judgment Readiness Engine.
 - Deterministic Black Swan Guardrail Engine.
+- Deterministic Reasoning Integrity Engine for cognitive forcing against
+  anchoring, premature closure, confirmation bias, search satisficing,
+  availability bias, omission bias, diagnostic momentum, framing risk, and
+  overconfidence.
 - Cross-domain sentinel rules including back pain plus neuro/bladder language.
 - Human-factor boundaries for embarrassment, stigma, fear-curated history,
   somatic amplification, reassurance seeking, stoic minimization, and denial.
@@ -54,6 +58,7 @@ Enabled by default:
 | `extractor` | Fast semantic extraction of red flags, wrong labels, human distortion, and coverage gaps. | Advisory only. Can add review targets, never authorize care. |
 | `boundary` | Clinical boundary reasoning: what makes automation unsafe and which falsifiers are missing. | Advisory only. Can recommend hold/verify targets for deterministic validation. |
 | `verifier` | Adversarial audit for ignored lines, false negatives, wrong concepts, and unsafe reassurance. | Advisory only. Can force review, never downgrade a guardrail. |
+| `bias_auditor` | Cognitive-bias audit of the reasoning path: anchoring, premature closure, confirmation bias, omission bias, diagnostic momentum, and overconfidence. | Advisory only. Can propose cognitive forcing actions, never accuse a clinician or change disposition. |
 
 Configured but disabled by default:
 
@@ -65,13 +70,14 @@ Configured but disabled by default:
 Fly secrets currently set:
 
 ```text
-OPENROUTER_ANALYSIS_ROLES=extractor,boundary,verifier
+OPENROUTER_ANALYSIS_ROLES=extractor,boundary,verifier,bias_auditor
 OPENROUTER_EXTRACTOR_MODEL=qwen/qwen3.6-flash
 OPENROUTER_BOUNDARY_MODEL=qwen/qwen3.6-flash
 OPENROUTER_VERIFIER_MODEL=qwen/qwen3.6-flash
+OPENROUTER_BIAS_MODEL=qwen/qwen3.6-flash
 OPENROUTER_PATIENT_MODEL=qwen/qwen3.6-flash
 OPENROUTER_WORKFLOW_MODEL=qwen/qwen3.6-flash
-OPENROUTER_MAX_PARALLEL_ROLES=3
+OPENROUTER_MAX_PARALLEL_ROLES=4
 ```
 
 Live smoke on 2026-04-28:
@@ -83,6 +89,7 @@ extractor: success, 2 findings
 boundary: success, 4 findings
 verifier: success, 4 findings
 total LLM candidate findings: 10
+Note: this smoke predated the `bias_auditor` role. Re-run after deployment.
 ```
 
 ## Input Coverage Guarantee
@@ -134,6 +141,16 @@ LLM role manifest:
   verifier qwen/qwen3.6-flash enabled
 ```
 
+Reasoning Integrity smoke:
+
+```text
+manual back-pain red-flag case:
+reasoning_integrity section present
+anchoring finding present
+premature_closure finding present
+recommendations include cognitive forcing actions
+```
+
 ## Key Files
 
 | File | Purpose |
@@ -141,6 +158,7 @@ LLM role manifest:
 | `interactive_demo.py` | Main FastAPI single-page demo, transcript workflow, analysis sections, recommendations UI. |
 | `jre/engine.py` | Judgment Readiness Engine, concept inference/reclassification, observations, JRI scoring. |
 | `jre/black_swan.py` | Guardrail engine, sentinels, autonomy caps, assumption register. |
+| `jre/reasoning_integrity.py` | Deterministic cognitive-bias guard and forcing-function generator. |
 | `jre/llm_augment.py` | OpenRouter integration, bounded role configs, role prompts, parallel role execution. |
 | `jre/templates.py` | Domain templates, slot specs, red-flag patterns, contradiction rules. |
 | `tests/test_interactive_demo.py` | Interactive endpoint, transcript, coverage, role manifest tests. |

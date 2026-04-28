@@ -31,7 +31,9 @@ Already active in `ver2`:
 - Bounded multi-role LLM candidate pipeline:
   - extractor,
   - boundary reasoner,
-  - adversarial verifier.
+  - adversarial verifier,
+  - cognitive bias auditor.
+- Reasoning Integrity Check for anchoring, premature closure, confirmation bias, search satisficing, omission bias, diagnostic momentum, framing/ascertainment risk, availability bias, and overconfidence.
 
 Mitigation role:
 
@@ -40,6 +42,7 @@ Mitigation role:
 Safety boundary:
 
 - LLM roles propose candidate signals only.
+- Reasoning-integrity findings are cognitive forcing actions, not claims about clinician character.
 - Unknown/unmapped rows are not neutral.
 - The most-restrictive governor still decides final autonomy.
 
