@@ -17,6 +17,7 @@ import json
 import os
 import urllib.request
 import urllib.error
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -42,6 +43,17 @@ class LLMAnalysisResult:
     model: str
     success: bool
     error: Optional[str] = None
+
+
+@dataclass(frozen=True)
+class LLMRoleConfig:
+    """Config for one bounded LLM role in the safety pipeline."""
+    key: str
+    label: str
+    env_var: str
+    purpose: str
+    authority: str
+    default_enabled: bool = False
 
 
 def _load_env_value(name: str) -> Optional[str]:
@@ -126,6 +138,83 @@ For non-clean cases, include candidate interpretation-boundary signals even if a
 Be conservative about diagnosis, but do not be silent about safety-boundary concerns."""
 
 
+ROLE_CONFIGS: Dict[str, LLMRoleConfig] = {
+    "extractor": LLMRoleConfig(
+        key="extractor",
+        label="Fast semantic extractor",
+        env_var="OPENROUTER_EXTRACTOR_MODEL",
+        purpose="Parse raw patient language into candidate red flags, distortions, wrong labels, and coverage gaps.",
+        authority="Advisory only. Can add review targets, never authorize care.",
+        default_enabled=True,
+    ),
+    "boundary": LLMRoleConfig(
+        key="boundary",
+        label="Clinical boundary reasoner",
+        env_var="OPENROUTER_BOUNDARY_MODEL",
+        purpose="Ask what would make the encounter unsafe for automation, including hidden emergencies and missing falsifiers.",
+        authority="Advisory only. Can recommend hold/verify targets for deterministic validation.",
+        default_enabled=True,
+    ),
+    "verifier": LLMRoleConfig(
+        key="verifier",
+        label="Adversarial verifier",
+        env_var="OPENROUTER_VERIFIER_MODEL",
+        purpose="Criticize the first pass for missed facts, unsafe reassurance, wrong negatives, and ignored transcript lines.",
+        authority="Advisory only. Can force review, never downgrade a guardrail.",
+        default_enabled=True,
+    ),
+    "patient_comm": LLMRoleConfig(
+        key="patient_comm",
+        label="Patient communication drafter",
+        env_var="OPENROUTER_PATIENT_MODEL",
+        purpose="Draft trust-preserving patient language after the governed decision is already set.",
+        authority="Post-governor language only. Cannot change disposition.",
+        default_enabled=False,
+    ),
+    "workflow": LLMRoleConfig(
+        key="workflow",
+        label="Clinician workflow synthesizer",
+        env_var="OPENROUTER_WORKFLOW_MODEL",
+        purpose="Condense the governed boundary map into clinician handoff and operational follow-up.",
+        authority="Post-governor summarization only. Cannot change autonomy tier.",
+        default_enabled=False,
+    ),
+}
+
+
+_ROLE_SYSTEM_PROMPTS: Dict[str, str] = {
+    "extractor": _SYSTEM_PROMPT,
+    "boundary": _SYSTEM_PROMPT
+    + """
+
+You are running the clinical boundary-reasoning pass. Focus on:
+- What would make this unsafe for autonomous handling?
+- Which missing, contradictory, stale, or unverifiable facts must be closed?
+- What subtle red flags may cross domains?
+- What patient goal, fear, embarrassment, denial, or practical pressure may distort answers?
+
+Return candidate findings only. Do not diagnose, reassure, authorize, or downgrade.""",
+    "verifier": _SYSTEM_PROMPT
+    + """
+
+You are running the adversarial verifier pass. Assume a prior extractor may have missed something.
+Look for:
+- transcript lines that were not clinically accounted for
+- facts mislabeled into the wrong concept or domain
+- false negatives caused by patient denial or vague language
+- missing-but-not-absent safety facts
+- LLM or rule outputs that could tempt unsafe reassurance
+
+Return only issues that should be reviewed or validated. Do not authorize care.""",
+    "patient_comm": """You draft patient-facing language only after a governed clinical decision exists.
+Find communication risks: shame, fear, cost pressure, denial, or language that could cause abandonment.
+Return JSON findings using the same schema. Do not change the clinical disposition.""",
+    "workflow": """You synthesize clinician workflow risks only after a governed clinical decision exists.
+Find handoff, burden, routing, documentation, and follow-up risks that could cause missed care or churn.
+Return JSON findings using the same schema. Do not change the clinical disposition.""",
+}
+
+
 class LLMDetector:
     """LLM-augmented clinical pattern detector using OpenRouter."""
 
@@ -146,6 +235,45 @@ class LLMDetector:
     def available(self) -> bool:
         """Check if API key is configured."""
         return self.api_key is not None and len(self.api_key) > 0
+
+    def _model_for_role(self, role: str) -> str:
+        config = ROLE_CONFIGS.get(role)
+        if config:
+            return _load_env_value(config.env_var) or self.model
+        return self.model
+
+    def configured_roles(self) -> List[str]:
+        """Return enabled LLM roles, preserving safe defaults.
+
+        OPENROUTER_ANALYSIS_ROLES accepts a comma-separated list such as
+        "extractor,boundary,verifier". Unknown roles are ignored. The patient
+        communication and workflow roles are intentionally not enabled by
+        default because they are post-governor synthesis roles, not safety
+        detection passes.
+        """
+        configured = _load_env_value("OPENROUTER_ANALYSIS_ROLES")
+        if configured:
+            requested = [part.strip() for part in configured.split(",") if part.strip()]
+            roles = [role for role in requested if role in ROLE_CONFIGS]
+            if roles:
+                return roles
+        return [role for role, cfg in ROLE_CONFIGS.items() if cfg.default_enabled]
+
+    def role_manifest(self) -> List[Dict[str, Any]]:
+        """Expose role/model configuration for transparency in the demo UI."""
+        enabled = set(self.configured_roles())
+        return [
+            {
+                "role": cfg.key,
+                "label": cfg.label,
+                "model": self._model_for_role(cfg.key),
+                "env_var": cfg.env_var,
+                "purpose": cfg.purpose,
+                "authority": cfg.authority,
+                "enabled": cfg.key in enabled,
+            }
+            for cfg in ROLE_CONFIGS.values()
+        ]
 
     def _build_case_prompt(self, case) -> str:
         """Build the analysis prompt from a CaseInput."""
@@ -169,14 +297,16 @@ class LLMDetector:
         lines.append("Analyze these statements for hidden clinical risks, distortion patterns, and safety concerns that simple regex might miss.")
         return "\n".join(lines)
 
-    def analyze_case(self, case) -> LLMAnalysisResult:
+    def analyze_case(self, case, role: str = "extractor") -> LLMAnalysisResult:
         """Analyze a single case through the LLM."""
+        role_config = ROLE_CONFIGS.get(role, ROLE_CONFIGS["extractor"])
+        model = self._model_for_role(role)
         if not self.available:
             return LLMAnalysisResult(
                 case_id=case.case_id,
                 findings=[],
                 raw_response="",
-                model=self.model,
+                model=model,
                 success=False,
                 error="No API key configured. Set OPENROUTER_API_KEY in .env or environment.",
             )
@@ -184,9 +314,9 @@ class LLMDetector:
         prompt = self._build_case_prompt(case)
 
         payload = json.dumps({
-            "model": self.model,
+            "model": model,
             "messages": [
-                {"role": "system", "content": _SYSTEM_PROMPT},
+                {"role": "system", "content": _ROLE_SYSTEM_PROMPTS.get(role_config.key, _SYSTEM_PROMPT)},
                 {"role": "user", "content": prompt},
             ],
             "temperature": 0.1,
@@ -216,7 +346,7 @@ class LLMDetector:
                 case_id=case.case_id,
                 findings=findings,
                 raw_response=raw_content,
-                model=self.model,
+                model=model,
                 success=True,
             )
 
@@ -230,7 +360,7 @@ class LLMDetector:
                 case_id=case.case_id,
                 findings=[],
                 raw_response=error_body,
-                model=self.model,
+                model=model,
                 success=False,
                 error=f"HTTP {e.code}: {error_body[:200]}",
             )
@@ -240,10 +370,36 @@ class LLMDetector:
                 case_id=case.case_id,
                 findings=[],
                 raw_response="",
-                model=self.model,
+                model=model,
                 success=False,
                 error=str(e),
             )
+
+    def analyze_case_roles(self, case, roles: Optional[List[str]] = None) -> Dict[str, LLMAnalysisResult]:
+        """Run configured role passes in parallel and return results by role."""
+        selected = roles or self.configured_roles()
+        selected = [role for role in selected if role in ROLE_CONFIGS]
+        if not selected:
+            selected = ["extractor"]
+
+        max_workers = min(len(selected), int(os.environ.get("OPENROUTER_MAX_PARALLEL_ROLES", "3")))
+        results: Dict[str, LLMAnalysisResult] = {}
+        with ThreadPoolExecutor(max_workers=max_workers) as pool:
+            future_to_role = {pool.submit(self.analyze_case, case, role): role for role in selected}
+            for future in as_completed(future_to_role):
+                role = future_to_role[future]
+                try:
+                    results[role] = future.result()
+                except Exception as exc:
+                    results[role] = LLMAnalysisResult(
+                        case_id=case.case_id,
+                        findings=[],
+                        raw_response="",
+                        model=self._model_for_role(role),
+                        success=False,
+                        error=str(exc),
+                    )
+        return results
 
     def _parse_findings(self, raw: str) -> List[LLMFinding]:
         """Parse LLM JSON response into findings."""

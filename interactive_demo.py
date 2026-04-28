@@ -1366,15 +1366,18 @@ def _build_final_recommendations(
     if top_guardrails:
         governance_actions.insert(0, "Review triggered guardrails for calibration before changing automation boundaries.")
 
+    role_manifest = _llm.role_manifest() if _llm is not None else []
     ai_processing = {
-        "role": "External LLM is a candidate-signal extractor and synthesis assistant, not the decision authority.",
+        "role": "External LLM roles are bounded assistants, not the decision authority.",
         "prompt_contract": [
-            "Use the full encounter, governance state, known unknowns, and source reliability.",
-            "Identify hidden risk language, minimization, source conflict, stale data, unsafe-delay pressure, and human defense-pattern cues.",
-            "Return structured candidate findings with evidence and confidence.",
-            "Do not diagnose, reassure, authorize autonomous action, or override curated guardrails.",
+            "Fast extractor parses raw language into candidate concepts, red flags, wrong labels, and coverage gaps.",
+            "Boundary reasoner asks what would make automation unsafe and which falsifiers are still missing.",
+            "Adversarial verifier looks for missed transcript lines, false negatives, and unsafe reassurance.",
+            "Patient and workflow synthesis happen only after the governed disposition is already set.",
+            "No LLM role may diagnose, reassure, authorize autonomous action, or override curated guardrails.",
         ],
         "current_authority": "Curated rules, validated guardrails, and the ensemble governor determine the final autonomy boundary.",
+        "roles": role_manifest,
     }
 
     return {
@@ -1411,6 +1414,15 @@ def _build_final_recommendations(
             "Which missing evidence would have changed the disposition?",
         ],
     }
+
+
+def _llm_role_manifest() -> List[Dict[str, Any]]:
+    if _llm is None:
+        return []
+    try:
+        return _llm.role_manifest()
+    except Exception:
+        return []
 
 
 def _build_provenance_authority_section(
@@ -1518,6 +1530,7 @@ def _build_provenance_authority_section(
         "data": {
             "llm_available": _llm is not None and _llm.available,
             "case_domain": case.patient_context.domain,
+            "llm_roles": _llm_role_manifest(),
             "layers": layers,
             "finding_rows": finding_rows,
             "ensemble": [
@@ -1945,6 +1958,7 @@ def _build_llm_section(
         "data": {
             "llm_available": llm_available,
             "llm_error": llm_error,
+            "role_manifest": _llm_role_manifest(),
             "llm_findings": llm_findings,
             "regex_findings": regex_findings,
             "llm_unique_concepts": sorted(llm_unique),
@@ -2122,12 +2136,15 @@ def parse_transcript(req: TranscriptParseRequest):
 @app.post("/demo/llm-analyze")
 def llm_analyze(req: AnalyzeRequest):
     """Run LLM analysis on a case. Called separately from /demo/analyze for async UX."""
+    role_manifest = _llm_role_manifest()
     if _llm is None or not _llm.available:
         return {
             "llm_available": False,
             "llm_error": "LLM not available. Set OPENROUTER_API_KEY to enable.",
             "llm_findings": [],
             "model": None,
+            "role_manifest": role_manifest,
+            "role_runs": [],
             "raw_preview": "",
         }
 
@@ -2135,12 +2152,22 @@ def llm_analyze(req: AnalyzeRequest):
     case = _to_case_input(req)
 
     try:
-        result = _llm.analyze_case(case)
+        role_results = _llm.analyze_case_roles(case)
         findings = []
-        if result.success:
-            for f in result.findings:
-                findings.append(
-                    {
+        role_runs = []
+        raw_previews = []
+        errors = []
+        for role in _llm.configured_roles():
+            result = role_results.get(role)
+            manifest = next((r for r in role_manifest if r.get("role") == role), {})
+            role_findings = []
+            if result is None:
+                continue
+            if result.success:
+                for f in result.findings:
+                    item = {
+                        "role": role,
+                        "role_label": manifest.get("label", role),
                         "category": f.category,
                         "concept": f.concept,
                         "severity": round(f.severity, 2),
@@ -2148,14 +2175,33 @@ def llm_analyze(req: AnalyzeRequest):
                         "evidence": f.evidence,
                         "confidence": round(f.confidence, 2),
                     }
-                )
+                    role_findings.append(item)
+                    findings.append(item)
+            elif result.error:
+                errors.append(f"{manifest.get('label', role)}: {result.error}")
+            if result.raw_response:
+                raw_previews.append(f"[{manifest.get('label', role)}] {result.raw_response[:350]}")
+            role_runs.append(
+                {
+                    "role": role,
+                    "label": manifest.get("label", role),
+                    "model": result.model,
+                    "success": result.success,
+                    "error": result.error,
+                    "findings": role_findings,
+                    "authority": manifest.get("authority", "Advisory only."),
+                    "purpose": manifest.get("purpose", ""),
+                }
+            )
         return {
             "llm_available": True,
-            "llm_error": result.error if not result.success else None,
+            "llm_error": "; ".join(errors) if errors else None,
             "llm_findings": findings,
-            "model": result.model,
-            "raw_preview": result.raw_response[:500],
-            "llm_note": "LLM ran and returned no additional candidate signals." if result.success and not findings else "",
+            "model": ", ".join(sorted({run["model"] for run in role_runs if run.get("model")})),
+            "role_manifest": role_manifest,
+            "role_runs": role_runs,
+            "raw_preview": "\n\n".join(raw_previews)[:900],
+            "llm_note": "LLM roles ran and returned no additional candidate signals." if not errors and not findings else "",
         }
     except Exception as e:
         return {
@@ -2897,6 +2943,15 @@ body {
 .llm-col h4 { font-size: 13px; font-weight: 600; margin-bottom: 10px; }
 .llm-finding-item { font-size: 13px; padding: 8px; background: var(--surface); border-radius: 6px; margin-bottom: 6px; border: 1px solid rgba(207,226,234,0.65); }
 .llm-unavailable { text-align: center; padding: 32px; color: var(--text-dim); font-size: 14px; }
+.llm-role-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.llm-role-card { border: 1px solid rgba(207,226,234,0.85); background: #fbfefd; border-radius: 8px; padding: 10px; }
+.llm-role-card.disabled { opacity: 0.72; background: #f8fafb; }
+.llm-role-title { display:flex; align-items:center; justify-content:space-between; gap:8px; font-size: 12px; font-weight: 800; color: var(--text); margin-bottom: 5px; }
+.llm-role-pill { font-size: 10px; text-transform: uppercase; letter-spacing: .04em; border-radius: 999px; padding: 3px 7px; background: #d8f4eb; color: #04745f; white-space: nowrap; }
+.llm-role-card.disabled .llm-role-pill { background:#edf2f5; color:var(--text-dim); }
+.llm-role-meta { font-size: 11px; color: var(--text-dim); line-height: 1.45; }
+.llm-role-run { border-top: 1px solid rgba(207,226,234,0.75); padding-top: 10px; margin-top: 10px; }
+.llm-role-run h5 { font-size: 12px; margin-bottom: 6px; color: var(--teal); }
 
 /* Screen 4: Governance */
 .learning-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
@@ -4514,6 +4569,11 @@ function renderProvenanceAuthority(data) {
   h += '<ul class="invariant-list">';
   for (const inv of data.invariants || []) h += '<li>' + esc(inv) + '</li>';
   h += '</ul>';
+  if ((data.llm_roles || []).length) {
+    h += '<details style="margin-top:12px;" open><summary style="cursor:pointer;font-size:13px;font-weight:800;">Configured LLM roles and model boundaries</summary>';
+    h += renderLLMRoleManifest(data.llm_roles || []);
+    h += '</details>';
+  }
   h += '<div style="font-size:12px;color:var(--text-dim);margin-top:10px;">Async LLM available: <strong>' + (data.llm_available ? 'yes' : 'no') + '</strong>. Domain: <strong>' + esc(data.case_domain) + '</strong>.</div>';
   return h;
 }
@@ -4601,7 +4661,8 @@ async function renderLLMSection(data) {
   const el = document.getElementById('section-body-llm_opinion');
   if (!el) return;
 
-  // Show regex side immediately, LLM side loading
+  let roleManifest = data.role_manifest || [];
+  // Show governed side immediately, LLM side loading
   let h = '<div class="llm-comparison">';
   h += '<div class="llm-col"><h4>Governed Safety Findings (' + data.regex_findings.length + ')</h4>';
   for (const f of data.regex_findings) {
@@ -4609,9 +4670,10 @@ async function renderLLMSection(data) {
   }
   if (!data.regex_findings.length) h += '<div class="empty-state">No governed findings.</div>';
   h += '</div>';
-  h += '<div class="llm-col" id="llm-results-col"><h4>Extractor Candidate Signals</h4>';
+  h += '<div class="llm-col" id="llm-results-col"><h4>Multi-Role LLM Candidate Pipeline</h4>';
+  h += renderLLMRoleManifest(roleManifest);
   if (data.llm_available) {
-    h += '<div style="text-align:center;padding:20px;"><span class="spinner"></span> Fetching LLM analysis...</div>';
+    h += '<div style="text-align:center;padding:20px;"><span class="spinner"></span> Running enabled advisory roles...</div>';
   } else {
     h += '<div class="llm-unavailable">LLM not available — set OPENROUTER_API_KEY to enable.</div>';
   }
@@ -4633,16 +4695,15 @@ async function renderLLMSection(data) {
       const llmData = await resp.json();
       const col = document.getElementById('llm-results-col');
       if (col) {
-        let lh = '<h4>LLM Analysis (' + (llmData.llm_findings || []).length + ' findings)</h4>';
-        if (llmData.model) lh += '<div style="font-size:12px;color:var(--text-dim);margin-bottom:8px;">Model: ' + esc(llmData.model) + '</div>';
+        let lh = '<h4>Multi-Role LLM Candidate Pipeline (' + (llmData.llm_findings || []).length + ' findings)</h4>';
+        lh += renderLLMRoleManifest(llmData.role_manifest || roleManifest);
+        if (llmData.model) lh += '<div style="font-size:12px;color:var(--text-dim);margin-bottom:8px;">Executed model(s): ' + esc(llmData.model) + '</div>';
         if (llmData.llm_error) {
           lh += '<div class="llm-unavailable">LLM error: ' + esc(llmData.llm_error) + '</div>';
         } else {
-          for (const f of (llmData.llm_findings || [])) {
-            lh += '<div class="llm-finding-item"><strong>' + esc(f.concept) + '</strong> (' + f.severity.toFixed(2) + ', conf ' + f.confidence.toFixed(2) + ')<br><span style="color:var(--text-dim)">' + esc(f.reason.substring(0, 100)) + '</span></div>';
-          }
+          lh += renderLLMRoleRuns(llmData.role_runs || [], llmData.llm_findings || []);
           if (!(llmData.llm_findings || []).length) {
-            lh += '<div class="empty-state">' + esc(llmData.llm_note || 'LLM ran but returned no additional candidate signals.') + '</div>';
+            lh += '<div class="empty-state">' + esc(llmData.llm_note || 'LLM roles ran but returned no additional candidate signals.') + '</div>';
             if (llmData.raw_preview) lh += '<details style="font-size:12px;color:var(--text-dim);margin-top:8px;"><summary>Raw LLM response preview</summary><pre style="white-space:pre-wrap;">' + esc(llmData.raw_preview) + '</pre></details>';
           }
         }
@@ -4653,6 +4714,53 @@ async function renderLLMSection(data) {
       if (col) col.innerHTML = renderLLMTimeout(e);
     }
   }
+}
+
+function renderLLMRoleManifest(roles) {
+  if (!roles || !roles.length) return '';
+  let h = '<div class="llm-role-grid">';
+  for (const role of roles) {
+    h += '<div class="llm-role-card ' + (role.enabled ? '' : 'disabled') + '">';
+    h += '<div class="llm-role-title"><span>' + esc(role.label || role.role) + '</span><span class="llm-role-pill">' + (role.enabled ? 'enabled' : 'available') + '</span></div>';
+    h += '<div class="llm-role-meta"><strong>Model:</strong> ' + esc(role.model || '') + '</div>';
+    h += '<div class="llm-role-meta"><strong>Env:</strong> ' + esc(role.env_var || '') + '</div>';
+    h += '<div class="llm-role-meta">' + esc(role.purpose || '') + '</div>';
+    h += '<div class="llm-role-meta"><strong>Authority:</strong> ' + esc(role.authority || 'Advisory only.') + '</div>';
+    h += '</div>';
+  }
+  h += '</div>';
+  return h;
+}
+
+function renderLLMRoleRuns(roleRuns, flatFindings) {
+  if (!roleRuns || !roleRuns.length) {
+    let h = '';
+    for (const f of (flatFindings || [])) {
+      h += renderLLMFinding(f);
+    }
+    return h;
+  }
+  let h = '';
+  for (const run of roleRuns) {
+    h += '<div class="llm-role-run">';
+    h += '<h5>' + esc(run.label || run.role) + ' · ' + esc(run.model || '') + '</h5>';
+    h += '<div class="llm-role-meta">' + esc(run.purpose || '') + '</div>';
+    h += '<div class="llm-role-meta"><strong>Authority:</strong> ' + esc(run.authority || 'Advisory only.') + '</div>';
+    if (run.error) {
+      h += '<div class="llm-unavailable" style="padding:10px;text-align:left;">' + esc(run.error) + '</div>';
+    } else if (run.findings && run.findings.length) {
+      for (const f of run.findings) h += renderLLMFinding(f);
+    } else {
+      h += '<div class="empty-state">No candidate signals from this role.</div>';
+    }
+    h += '</div>';
+  }
+  return h;
+}
+
+function renderLLMFinding(f) {
+  const role = f.role_label ? '<span style="color:var(--text-dim);font-size:11px;">' + esc(f.role_label) + '</span><br>' : '';
+  return '<div class="llm-finding-item">' + role + '<strong>' + esc(f.concept) + '</strong> (' + Number(f.severity || 0).toFixed(2) + ', conf ' + Number(f.confidence || 0).toFixed(2) + ')<br><span style="color:var(--text-dim)">' + esc(String(f.reason || '').substring(0, 140)) + '</span></div>';
 }
 
 function buildLLMPayloadFromCurrentCase() {
@@ -4669,14 +4777,14 @@ function renderLLMTimeout(e) {
   const message = isAbort
     ? 'External model exceeded the demo response window. Governed safety findings remain authoritative; retry when the network/model is responsive.'
     : 'External model call did not complete: ' + (e ? (e.message || e.name || String(e)) : 'unknown error');
-  return '<h4>LLM Analysis</h4><div class="llm-unavailable">' + esc(message) + '<br><button class="btn btn-secondary btn-sm" style="margin-top:10px;" onclick="retryLLMAnalysis()">Retry LLM</button></div>';
+  return '<h4>Multi-Role LLM Candidate Pipeline</h4><div class="llm-unavailable">' + esc(message) + '<br><button class="btn btn-secondary btn-sm" style="margin-top:10px;" onclick="retryLLMAnalysis()">Retry LLM</button></div>';
 }
 
 async function retryLLMAnalysis() {
   if (!currentCase) return;
   const col = document.getElementById('llm-results-col');
   if (!col) return;
-  col.innerHTML = '<h4>Extractor Candidate Signals</h4><div style="text-align:center;padding:20px;"><span class="spinner"></span> Retrying external model...</div>';
+  col.innerHTML = '<h4>Multi-Role LLM Candidate Pipeline</h4><div style="text-align:center;padding:20px;"><span class="spinner"></span> Retrying enabled advisory roles...</div>';
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 90000);
@@ -4688,15 +4796,14 @@ async function retryLLMAnalysis() {
     });
     clearTimeout(timeoutId);
     const llmData = await resp.json();
-    let lh = '<h4>LLM Analysis (' + (llmData.llm_findings || []).length + ' findings)</h4>';
-    if (llmData.model) lh += '<div style="font-size:12px;color:var(--text-dim);margin-bottom:8px;">Model: ' + esc(llmData.model) + '</div>';
+    let lh = '<h4>Multi-Role LLM Candidate Pipeline (' + (llmData.llm_findings || []).length + ' findings)</h4>';
+    lh += renderLLMRoleManifest(llmData.role_manifest || []);
+    if (llmData.model) lh += '<div style="font-size:12px;color:var(--text-dim);margin-bottom:8px;">Executed model(s): ' + esc(llmData.model) + '</div>';
     if (llmData.llm_error) {
       lh += '<div class="llm-unavailable">LLM error: ' + esc(llmData.llm_error) + '</div>';
     } else {
-      for (const f of (llmData.llm_findings || [])) {
-        lh += '<div class="llm-finding-item"><strong>' + esc(f.concept) + '</strong> (' + f.severity.toFixed(2) + ', conf ' + f.confidence.toFixed(2) + ')<br><span style="color:var(--text-dim)">' + esc(f.reason.substring(0, 100)) + '</span></div>';
-      }
-      if (!(llmData.llm_findings || []).length) lh += '<div class="empty-state">' + esc(llmData.llm_note || 'LLM ran but returned no additional candidate signals.') + '</div>';
+      lh += renderLLMRoleRuns(llmData.role_runs || [], llmData.llm_findings || []);
+      if (!(llmData.llm_findings || []).length) lh += '<div class="empty-state">' + esc(llmData.llm_note || 'LLM roles ran but returned no additional candidate signals.') + '</div>';
     }
     col.innerHTML = lh;
   } catch (e) {

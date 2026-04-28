@@ -142,6 +142,34 @@ cp .env.example .env
 # Set OPENROUTER_MODEL in .env to override it
 ```
 
+The interactive demo uses bounded LLM roles. The default async safety pass runs
+`extractor,boundary,verifier` in parallel. Patient communication and workflow
+synthesis roles are configured but disabled by default because they are
+post-governor drafting roles, not safety authorities.
+
+```bash
+OPENROUTER_ANALYSIS_ROLES=extractor,boundary,verifier
+OPENROUTER_EXTRACTOR_MODEL=qwen/qwen3.6-flash
+OPENROUTER_BOUNDARY_MODEL=qwen/qwen3.6-flash
+OPENROUTER_VERIFIER_MODEL=qwen/qwen3.6-flash
+OPENROUTER_PATIENT_MODEL=qwen/qwen3.6-flash
+OPENROUTER_WORKFLOW_MODEL=qwen/qwen3.6-flash
+OPENROUTER_MAX_PARALLEL_ROLES=3
+OPENROUTER_TIMEOUT_SECONDS=75
+```
+
+On Fly, these are normal secrets:
+
+```bash
+flyctl secrets set OPENROUTER_ANALYSIS_ROLES=extractor,boundary,verifier
+flyctl secrets set OPENROUTER_EXTRACTOR_MODEL=qwen/qwen3.6-flash
+flyctl secrets set OPENROUTER_BOUNDARY_MODEL=qwen/qwen3.6-flash
+flyctl secrets set OPENROUTER_VERIFIER_MODEL=qwen/qwen3.6-flash
+```
+
+LLM findings remain advisory. Curated rules, guardrails, and the ensemble
+governor still determine the final autonomy boundary.
+
 When no API key is configured, the engine degrades gracefully to regex-only mode with no errors.
 
 ---

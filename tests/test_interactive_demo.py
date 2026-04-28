@@ -457,6 +457,14 @@ class TestAnalysisEndpoint:
         assert "Black Swan Guard" in neuro_row["consumers"]
         assert "Async LLM extractor payload" in bladder_row["consumers"]
 
+        provenance = next(s for s in data["sections"] if s["id"] == "provenance_authority")["data"]
+        llm_roles = provenance["llm_roles"]
+        role_names = {r["role"] for r in llm_roles}
+        assert {"extractor", "boundary", "verifier", "patient_comm", "workflow"} <= role_names
+        enabled_roles = {r["role"] for r in llm_roles if r["enabled"]}
+        assert {"extractor", "boundary", "verifier"} <= enabled_roles
+        assert all("authority" in r and "model" in r for r in llm_roles)
+
     def test_defense_pattern_case_has_actionable_human_factor_recommendations(self):
         case = _ALL_CASES["showcase-010-defense-pattern-distortion"]
         resp = client.post("/demo/analyze", json=_make_analyze_payload(case))
@@ -894,6 +902,51 @@ class TestSuggestEndpoints:
             json={"domain": "nonexistent_domain"},
         )
         assert resp.status_code == 422
+
+    def test_llm_analyze_exposes_role_manifest_without_key(self):
+        from interactive_demo import _llm as demo_llm
+
+        original_key = None
+        if demo_llm is not None:
+            original_key = demo_llm.api_key
+            demo_llm.api_key = None
+        try:
+            resp = client.post(
+                "/demo/llm-analyze",
+                json={
+                    "case_id": "role-manifest-test",
+                    "patient_context": {
+                        "age": 62,
+                        "chief_concern": "back pain",
+                        "domain": "musculoskeletal_pain",
+                        "modality": "text",
+                        "known_conditions": [],
+                    },
+                    "statements": [
+                        {
+                            "question": "What happened?",
+                            "answer": "My back hurts and my private area tingles.",
+                            "concept": "red_flag",
+                            "source": "patient",
+                            "metadata": {},
+                        }
+                    ],
+                    "ground_truth": {},
+                },
+            )
+            assert resp.status_code == 200
+            data = resp.json()
+            assert data["llm_available"] is False
+            assert data["role_runs"] == []
+            roles = {r["role"]: r for r in data["role_manifest"]}
+            assert roles["extractor"]["enabled"] is True
+            assert roles["boundary"]["enabled"] is True
+            assert roles["verifier"]["enabled"] is True
+            assert roles["patient_comm"]["enabled"] is False
+            assert roles["workflow"]["enabled"] is False
+        finally:
+            if demo_llm is not None:
+                demo_llm.api_key = original_key
 
 
 # ===========================================================================
