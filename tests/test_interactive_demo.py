@@ -288,8 +288,22 @@ class TestAnalysisEndpoint:
         assert recs["critical_evidence"]
         assert recs["patient_message"]
         assert recs["clinician_handoff"]
+        assert recs["human_factors"]["title"] == "Human Factors Boundary"
+        assert recs["human_factors"]["prompt_guardrails"]
         assert recs["ai_processing"]["prompt_contract"]
         assert recs["governance_actions"]
+
+    def test_defense_pattern_case_has_actionable_human_factor_recommendations(self):
+        case = _ALL_CASES["showcase-010-defense-pattern-distortion"]
+        resp = client.post("/demo/analyze", json=_make_analyze_payload(case))
+        assert resp.status_code == 200
+        data = resp.json()
+        human = data["recommendations"]["human_factors"]
+        assert "defense" in human["spectrum"].lower()
+        assert "SENTINEL_DEFENSE_PATTERN_DISTORTION" in human["triggered_rules"]
+        assert any("stoic" in cue["label"] for cue in human["cues"])
+        assert any("anxiety" in cue["label"] for cue in human["cues"])
+        assert any("Do not call the patient anxious" in item for item in human["avoid"])
 
     def test_pasted_real_encounter_without_concepts_is_analyzed(self):
         payload = {

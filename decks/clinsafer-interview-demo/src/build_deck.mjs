@@ -195,7 +195,7 @@ function addCover() {
             { width: fill, height: fill, gap: 26, justify: "center" },
             [
               metric("46", "synthetic cases in the live library", C.tealDeep),
-              metric("326", "passing tests after final polish", C.blue),
+              metric("327", "passing tests after final polish", C.blue),
               metric("1", "most-restrictive governor decides autonomy", C.coral),
             ],
           ),
@@ -454,7 +454,7 @@ function addRecommendations() {
       [
         compactPanel("Disposition", "ESCALATE, HOLD, NEED_OBJECTIVE_DATA, ROUTE_CLINICIAN, or narrow audited action.", C.coral),
         compactPanel("Immediate action", "What is allowed now, what is blocked, and what restores readiness.", C.tealDeep),
-        compactPanel("Patient message", "Safety language that addresses cost, fear, embarrassment, stigma, work, or delay without downgrading risk.", C.blue),
+        compactPanel("Human factors", "Defense/disclosure cues become inference limits and next-question strategy, not patient labels.", C.blue),
         compactPanel("Clinician handoff", "Boundary map and top blockers instead of raw transcript only.", C.violet),
       ],
     ),
@@ -465,7 +465,7 @@ When you click Final Recommendations in the app, frame it as the conversion from
 
 Emphasize:
 - "This is not just explainability. It is operational instruction."
-- "The page distinguishes patient language, clinical handoff, governance actions, and quality metrics."
+- "The page distinguishes patient language, human defense patterns, clinical handoff, governance actions, and quality metrics."
 - "This helps with safety, physician efficiency, and patient trust."
 
 Do not overstate that the patient copy is final clinical guidance. Say it is a demo draft requiring product/clinical review.
@@ -495,7 +495,7 @@ function addRealVsPrototype() {
     ),
     row(
       { width: fill, height: hug, gap: 28, align: "center" },
-      [pill("326 tests passed", C.tealDeep), pill("Live Fly deployment", C.blue), pill("OpenRouter model configurable", C.violet)],
+      [pill("327 tests passed", C.tealDeep), pill("Live Fly deployment", C.blue), pill("OpenRouter model configurable", C.violet)],
     ),
     footer(),
   ]);

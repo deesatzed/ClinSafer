@@ -47,12 +47,12 @@ Current real capabilities:
 - Human-defense-pattern detection for somatic amplification, reassurance seeking, anxiety-labeling, stoic minimization, and denial.
 - Provenance display separating curated rules, AI candidate signals, learned priors, memory hooks, and final governor authority.
 - External LLM candidate-signal extraction through OpenRouter.
-- Final Recommendations page synthesized from actual analysis output.
+- Final Recommendations page synthesized from actual analysis output, including a Human Factors Boundary that turns defense/disclosure cues into concrete inference limits, next-question strategy, and LLM prompt constraints.
 - Governance review and clinician feedback memory prototype.
 
 Verification performed:
 
-- Full local test suite: `326 passed`.
+- Full local test suite: `327 passed`.
 - Live deployed API accepted arbitrary pasted-style encounter data with no pre-tagged concepts.
 - Live deployed API returned `ESCALATE` and `T0_EMERGENCY_OR_HARD_STOP` for the cost-fear exertional chest-discomfort case.
 - Live deployed LLM endpoint returned candidate findings using `qwen/qwen3.6-flash`.

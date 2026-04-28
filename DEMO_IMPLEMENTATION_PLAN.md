@@ -975,6 +975,7 @@ Not all human distortion is concealment. Some patients amplify and seek reassura
 - System flags `human_defense_pattern`.
 - The engine separates the coping frame from clinical facts.
 - Autonomy remains capped until the system asks concrete questions about timing, exertional relationship, functional limitation, current symptoms, and objective data.
+- Final Recommendations shows a Human Factors Boundary: detected cues, reliability modifiers, how to ask next, what not to do, and LLM prompt constraints.
 - The UI should avoid stigmatizing labels. Use terms like "defense-pattern distortion", "somatic amplification/reassurance seeking", and "stoic minimization/denial".
 
 **What this proves**

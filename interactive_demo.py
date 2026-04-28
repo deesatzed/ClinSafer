@@ -768,14 +768,146 @@ def _build_demo_summary(
     if not why:
         why.append("No high-severity blocker was found by the governed layers.")
 
+    human_boundary = _build_human_factor_boundary(case, jre_report, bsg_report)
+
     return {
         "state": combined_state,
         "case_title": CASE_NARRATIVES.get(case.case_id).title if case.case_id in CASE_NARRATIVES else case.case_id,
         "why": why[:5],
         "authority": "Curated safety rules and the ensemble governor made the routing decision.",
         "ai_role": "External LLM findings are advisory candidate signals only; they can support review but cannot authorize or hard-stop care by themselves.",
-        "patient_pattern": "The patient wording, omissions, and context are evaluated as evidence boundaries, not treated as clean negative evidence.",
+        "patient_pattern": human_boundary["summary"],
         "autonomy": f"{bsg_report.max_autonomy_tier}: {AUTONOMY_TIERS.get(bsg_report.max_autonomy_tier, '')}",
+    }
+
+
+def _build_human_factor_boundary(
+    case: CaseInput,
+    jre_report: ReadinessReport,
+    bsg_report: GuardrailReport,
+) -> Dict[str, Any]:
+    """Summarize human-response patterns that alter answer reliability.
+
+    This is intentionally not a psychiatric label. It is a product-safety layer
+    that treats patient language as a measurement shaped by context, fear,
+    identity, stigma, and coping style.
+    """
+    text = " ".join(s.answer for s in case.statements).lower()
+    categories = {f.category for f in bsg_report.findings}
+    rule_ids = {f.rule_id for f in bsg_report.findings}
+
+    spectrum = []
+    cues = []
+
+    cue_patterns = [
+        (
+            "anxiety / somatic amplification",
+            r"\b(anxiety|panic|stress|overreacting|in my head|google|googled|internet|cancer|something bad|bad news)\b",
+            "May anchor on a feared diagnosis or seek reassurance before the facts are complete.",
+        ),
+        (
+            "stoic minimization / denial",
+            r"\b(tough it out|not a complainer|not weak|look weak|walk it off|push through|make a fuss|big deal|nothing serious|i'?ll be fine|i will be fine)\b",
+            "May under-report severity or functional limitation to preserve a self-image of toughness.",
+        ),
+        (
+            "privacy / stigma pressure",
+            r"\b(embarrass|ashamed|don'?t judge|do not judge|chart|do not want to talk|don'?t want to talk|awkward)\b",
+            "May omit sensitive details unless the system normalizes and narrows the question.",
+        ),
+        (
+            "access / consequence pressure",
+            r"\b(afford|insurance|work|wait until|please do not send|please don't send|can i wait|er)\b",
+            "May bargain against escalation for practical reasons even when risk is unchanged.",
+        ),
+    ]
+
+    for label, pattern, reason in cue_patterns:
+        if re.search(pattern, text):
+            spectrum.append(label)
+            cues.append({"label": label, "why": reason})
+
+    if "human_disclosure_pressure" in categories:
+        spectrum.append("sensitive disclosure pressure")
+        cues.append({
+            "label": "sensitive disclosure pressure",
+            "why": "The patient may be curating the history because the topic feels embarrassing, stigmatized, or frightening.",
+        })
+    if "human_defense_pattern" in categories:
+        spectrum.append("defense-pattern distortion")
+        cues.append({
+            "label": "defense-pattern distortion",
+            "why": "The patient is framing symptoms through coping language rather than giving clean clinical facts.",
+        })
+    if "care_avoidance_pressure" in categories:
+        spectrum.append("care-avoidance pressure")
+
+    # Deduplicate while preserving order.
+    spectrum = list(dict.fromkeys(spectrum))
+    unique_cues = []
+    seen = set()
+    for cue in cues:
+        if cue["label"] not in seen:
+            unique_cues.append(cue)
+            seen.add(cue["label"])
+    cues = unique_cues
+
+    reliability_findings = [
+        f for f in jre_report.findings
+        if f.category in {"distorted", "contradictory", "uncertain"}
+    ]
+
+    if not spectrum and not reliability_findings:
+        summary = "No explicit human distortion pattern was detected, but patient wording, omissions, and context are still treated as evidence boundaries."
+        spectrum_label = "No explicit pattern detected"
+    else:
+        spectrum_label = " + ".join(spectrum[:4]) if spectrum else "answer reliability weakened"
+        summary = (
+            "Human factor boundary: "
+            + spectrum_label
+            + ". Treat coping language as an answer-reliability modifier, not as proof of low or high risk."
+        )
+
+    verification_strategy = [
+        "Normalize the concern without agreeing to the patient's preferred conclusion.",
+        "Ask one concrete function/timing question instead of debating whether the symptom is serious.",
+        "Translate clinical vocabulary into body-location and activity examples.",
+        "Request current objective data or collateral evidence when it would change autonomy.",
+        "Document what remains unknown and why automation is capped.",
+    ]
+    avoid = [
+        "Do not call the patient anxious, dramatic, or unreliable.",
+        "Do not accept 'it is just anxiety' as a diagnosis or 'I can tough it out' as negative evidence.",
+        "Do not reward minimization by closing the case as low risk.",
+        "Do not let an LLM convert coping language into reassurance without validated evidence.",
+    ]
+    prompt_guardrails = [
+        "Label the pattern as an interpretation-boundary cue, not a psychiatric conclusion.",
+        "Extract exact statements, missing facts, contradictions, and functional claims.",
+        "Generate normalizing, privacy-preserving questions that close one boundary at a time.",
+        "Keep all human-factor signals advisory until deterministic safety validators approve behavior changes.",
+    ]
+
+    return {
+        "title": "Human Factors Boundary",
+        "spectrum": spectrum_label,
+        "summary": summary,
+        "cues": cues[:6],
+        "reliability_findings": [
+            {
+                "signal": _display_concept(f.concept),
+                "why": f.reason,
+                "rule": f.rule_id,
+            }
+            for f in reliability_findings[:5]
+        ],
+        "verification_strategy": verification_strategy,
+        "avoid": avoid,
+        "prompt_guardrails": prompt_guardrails,
+        "triggered_rules": sorted(
+            r for r in rule_ids
+            if r in {"SENTINEL_DISCLOSURE_DISTORTION", "SENTINEL_DEFENSE_PATTERN_DISTORTION", "SENTINEL_CARE_AVOIDANCE_PRESSURE"}
+        ),
     }
 
 
@@ -796,6 +928,7 @@ def _build_final_recommendations(
     }
     top_findings = sorted(jre_report.findings, key=lambda x: -x.severity)[:6]
     top_guardrails = sorted(bsg_report.findings, key=lambda x: -x.severity)[:4]
+    human_boundary = _build_human_factor_boundary(case, jre_report, bsg_report)
 
     critical_evidence = [
         {
@@ -902,7 +1035,7 @@ def _build_final_recommendations(
         "role": "External LLM is a candidate-signal extractor and synthesis assistant, not the decision authority.",
         "prompt_contract": [
             "Use the full encounter, governance state, known unknowns, and source reliability.",
-            "Identify hidden risk language, minimization, source conflict, stale data, and unsafe-delay pressure.",
+            "Identify hidden risk language, minimization, source conflict, stale data, unsafe-delay pressure, and human defense-pattern cues.",
             "Return structured candidate findings with evidence and confidence.",
             "Do not diagnose, reassure, authorize autonomous action, or override curated guardrails.",
         ],
@@ -933,6 +1066,7 @@ def _build_final_recommendations(
         "do_not_infer": do_not_infer,
         "next_questions": next_questions,
         "patient_message": patient_message,
+        "human_factors": human_boundary,
         "governance_actions": governance_actions,
         "ai_processing": ai_processing,
         "quality_metrics": [
@@ -2593,6 +2727,48 @@ textarea.suggestion-edit {
   font-size: 14px;
   line-height: 1.55;
 }
+.human-factor-card {
+  border-color: rgba(114,90,193,0.28);
+  background: linear-gradient(135deg, #ffffff 0%, #f7f5ff 55%, #f8fcfd 100%);
+}
+.human-spectrum {
+  display: inline-block;
+  margin: 2px 0 8px;
+  padding: 6px 9px;
+  border-radius: 999px;
+  background: rgba(114,90,193,0.10);
+  color: var(--purple);
+  font-size: 12px;
+}
+.human-summary {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text);
+  margin-bottom: 10px;
+}
+.human-rule-row { margin: 8px 0 12px; }
+.human-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+  margin-top: 10px;
+}
+.human-grid h4 {
+  font-size: 12px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 7px;
+}
+.human-prompt-details {
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+.human-prompt-details summary {
+  cursor: pointer;
+  font-weight: 800;
+  color: var(--accent);
+}
 .boundary-table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .boundary-table th { text-align: left; padding: 8px; color: var(--text-dim); border-bottom: 1px solid var(--border); }
 .boundary-table td { padding: 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
@@ -3387,6 +3563,8 @@ function renderRecommendations(data) {
   h += '<div class="recommendation-card"><h3>Patient-Facing Message</h3><div class="patient-script">' + esc(data.patient_message || '') + '</div></div>';
   h += '<div class="recommendation-card"><h3>Clinician Handoff</h3><div style="font-size:13px;line-height:1.55;">' + esc(data.clinician_handoff || '') + '</div></div>';
 
+  h += renderHumanFactorsRecommendation(data.human_factors || {});
+
   h += '<div class="recommendation-grid">';
   h += '<div class="recommendation-card"><h3>Governance Follow-up</h3><ul>';
   for (const item of data.governance_actions || []) h += '<li>' + esc(item) + '</li>';
@@ -3399,6 +3577,46 @@ function renderRecommendations(data) {
   h += '<div class="recommendation-card"><h3>Quality Metrics To Capture</h3><ul>';
   for (const item of data.quality_metrics || []) h += '<li>' + esc(item) + '</li>';
   h += '</ul></div>';
+  h += '</div>';
+  return h;
+}
+
+function renderHumanFactorsRecommendation(data) {
+  let h = '<div class="recommendation-card human-factor-card">';
+  h += '<h3>' + esc(data.title || 'Human Factors Boundary') + '</h3>';
+  h += '<div class="human-spectrum"><strong>Spectrum:</strong> ' + esc(data.spectrum || 'No explicit pattern detected') + '</div>';
+  h += '<div class="human-summary">' + esc(data.summary || '') + '</div>';
+  if ((data.triggered_rules || []).length) {
+    h += '<div class="human-rule-row">';
+    for (const r of data.triggered_rules || []) h += '<span class="provenance-token">' + esc(r) + '</span>';
+    h += '</div>';
+  }
+  h += '<div class="human-grid">';
+  h += '<div><h4>Detected Cues</h4>';
+  if ((data.cues || []).length) {
+    for (const cue of data.cues || []) h += '<div class="evidence-row"><strong>' + esc(cue.label) + '</strong><br><span style="color:var(--text-dim)">' + esc(cue.why) + '</span></div>';
+  } else {
+    h += '<div class="empty-state">No explicit human-factor cue detected.</div>';
+  }
+  h += '</div>';
+  h += '<div><h4>Reliability Modifiers</h4>';
+  if ((data.reliability_findings || []).length) {
+    for (const f of data.reliability_findings || []) h += '<div class="evidence-row"><strong>' + esc(f.signal) + '</strong><br><span style="color:var(--text-dim)">' + esc(f.why) + '</span><br><span style="font-size:11px;color:var(--text-dim);">' + esc(f.rule) + '</span></div>';
+  } else {
+    h += '<div class="empty-state">No contradiction/distortion finding tied to answer reliability.</div>';
+  }
+  h += '</div></div>';
+  h += '<div class="human-grid">';
+  h += '<div><h4>How To Ask Next</h4><ul>';
+  for (const item of data.verification_strategy || []) h += '<li>' + esc(item) + '</li>';
+  h += '</ul></div>';
+  h += '<div><h4>Do Not Do</h4><ul>';
+  for (const item of data.avoid || []) h += '<li>' + esc(item) + '</li>';
+  h += '</ul></div>';
+  h += '</div>';
+  h += '<details class="human-prompt-details"><summary>LLM prompt boundary for this layer</summary><ul>';
+  for (const item of data.prompt_guardrails || []) h += '<li>' + esc(item) + '</li>';
+  h += '</ul></details>';
   h += '</div>';
   return h;
 }
