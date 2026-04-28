@@ -11,7 +11,8 @@ It separates:
 
 ## 1. Current Input Pipeline
 
-The current app starts with a structured `CaseInput`:
+The current app can start from either a structured `CaseInput` or a pasted
+raw transcript.
 
 - `PatientContext`: age, domain, chief concern, modality, known conditions, language barrier, caregiver status.
 - `Statement[]`: each question/answer pair with optional concept, source, and metadata.
@@ -20,10 +21,15 @@ The current app starts with a structured `CaseInput`:
 Current flow:
 
 ```text
-CaseInput
+Raw transcript or CaseInput
+  -> transcript parser
+  -> patient context extraction
+  -> concept inference / reclassification
+  -> Input Coverage Audit
   -> JudgmentReadinessEngine.evaluate()
   -> BlackSwanGuardrailEngine.evaluate()
   -> most_restrictive(JRE state, BSG state)
+  -> async multi-role LLM candidate pipeline
   -> interactive demo sections
 ```
 
@@ -51,7 +57,8 @@ Observation(
 )
 ```
 
-Current extraction is deterministic:
+Current extraction is deterministic and uses concept labels as hints, not
+absolute truth:
 
 1. Infer or use provided concept.
 2. Normalize raw answer.
@@ -62,6 +69,18 @@ Current extraction is deterministic:
 7. Apply known distortion-trap priors.
 8. Apply context penalties for low literacy, language barrier, and text modality.
 9. Emit trace strings explaining each adjustment.
+
+Important mitigation now implemented:
+
+- A manual concept such as `red_flag`, `alarm`, or `urgent` is preserved as a
+  safety hint.
+- If the text fits a concrete domain slot, the system reclassifies it. Example:
+  `red_flag` plus "tingling in my private areas" in a back-pain case becomes
+  `neuro_deficit`.
+- If a supplied concept belongs to the wrong domain, such as `flank_pain` in a
+  musculoskeletal back-pain pathway, the active-domain inference can override it.
+- Unknown observations are not neutral. They create review findings and cannot
+  support reassurance or closure.
 
 Example:
 
@@ -136,11 +155,12 @@ Main passes:
 ```text
 observations
   -> source conflict findings
+  -> unmapped observation review findings
   -> slot findings
   -> contradiction findings
   -> red flag findings
   -> gestalt findings
-  -> optional LLM candidate findings
+  -> optional bounded LLM candidate findings
 ```
 
 Key mechanisms:
@@ -218,9 +238,95 @@ This is an expert-system ensemble:
 - contradiction lens,
 - distortion lens,
 - red-flag lens,
+
+## 6. Bounded Multi-Role LLM Pipeline
+
+The deployed app now uses a bounded multi-role LLM design for the optional async
+analysis. This is not a voting committee and not an autonomous decision-maker.
+It is a candidate-signal pipeline that runs after deterministic analysis is
+already available.
+
+Default enabled roles:
+
+```text
+extractor
+  -> parse raw language into candidate red flags, wrong labels, distortion,
+     human disclosure pressure, and coverage gaps
+
+boundary
+  -> ask what makes the encounter unsafe for automation and which missing
+     falsifiers must be closed
+
+verifier
+  -> adversarially audit for ignored lines, false negatives, premature closure,
+     and unsafe reassurance
+```
+
+Configured but disabled by default:
+
+```text
+patient_comm
+  -> post-governor patient-facing language only
+
+workflow
+  -> post-governor clinician/workflow synthesis only
+```
+
+Role-specific model variables:
+
+```text
+OPENROUTER_ANALYSIS_ROLES=extractor,boundary,verifier
+OPENROUTER_EXTRACTOR_MODEL=qwen/qwen3.6-flash
+OPENROUTER_BOUNDARY_MODEL=qwen/qwen3.6-flash
+OPENROUTER_VERIFIER_MODEL=qwen/qwen3.6-flash
+OPENROUTER_PATIENT_MODEL=qwen/qwen3.6-flash
+OPENROUTER_WORKFLOW_MODEL=qwen/qwen3.6-flash
+OPENROUTER_MAX_PARALLEL_ROLES=3
+```
+
+Authority rule:
+
+```text
+LLM role output -> candidate finding only
+candidate finding -> review target / missing falsifier / prompt for validator
+candidate finding -/-> authorization, prescription, closure, hard-stop downgrade
+```
+
+The UI exposes role, model, purpose, and authority. This is intentional: a
+reviewer should be able to distinguish "the model noticed this" from "the
+governed software is allowed to act on this."
+
+## 7. Input Coverage Audit
+
+Every encounter line is audited before the analysis is presented.
+
+For each row, the audit shows:
+
+- supplied concept,
+- inferred concept,
+- effective concept,
+- source,
+- whether reclassification occurred,
+- which consumers used the row:
+  - observation extractor,
+  - patient-context extractor,
+  - JRE template slot,
+  - JRE rules,
+  - Black Swan Guard,
+  - async LLM extractor payload,
+  - concept reclassifier,
+- safety effect,
+- status.
+
+The invariant is:
+
+> No input line may silently disappear or support reassurance while unmapped.
+
+This is the mitigation for the failure mode where a clinically important line is
+added by a user, mislabeled, and then ignored by downstream analysis.
 - critical missingness lens.
 
-## 6. Black Swan Guardrail Ensemble
+## 8. Black Swan Guardrail Ensemble
 
 The BSG layer is a second ensemble around the JRE.
 
@@ -265,7 +371,7 @@ Final = FAIL_CLOSED
 
 This is a safety-critical monotonic constraint: the less permissive layer wins.
 
-## 7. Question Selection
+## 9. Question Selection
 
 Question selection is currently deterministic plus learned yield priors.
 
@@ -291,7 +397,7 @@ Then it sorts and selects top questions.
 
 Experience memory provides `expected_question_yield`, seeded and updated by EMA.
 
-## 8. Current Learning
+## 10. Current Learning
 
 The current learning layer is limited but real.
 
@@ -316,7 +422,7 @@ governed experiential calibration
 
 It changes priors and question yield, not autonomous clinical policy.
 
-## 9. Dynamic ESS Node Creation: Proposed Next Architecture
+## 11. Dynamic ESS Node Creation: Proposed Next Architecture
 
 The next architecture should add an AI-generated expert-system planning layer.
 
@@ -324,7 +430,7 @@ Flow:
 
 ```text
 Raw encounter
-  -> LLM/extractor reads case
+  -> bounded LLM extractor / boundary / verifier roles read case
   -> proposes case boundary graph
   -> proposes nodes
   -> proposes ranges/distributions
@@ -363,7 +469,7 @@ Example dynamic node:
 }
 ```
 
-## 10. How To Decide Node Ranges
+## 12. How To Decide Node Ranges
 
 Node ranges should be chosen by evidence type, not one generic confidence score.
 
@@ -413,7 +519,7 @@ Example:
   autonomy effect: cannot renew autonomously
 ```
 
-## 11. Distribution Selection Heuristic
+## 13. Distribution Selection Heuristic
 
 A dynamic ESS planner should choose distribution type like this:
 
@@ -436,7 +542,7 @@ elif repeated events matter:
     count / rate model
 ```
 
-## 12. Validator Layer
+## 14. Validator Layer
 
 AI-generated nodes and rules need validators.
 
@@ -462,7 +568,7 @@ Expert software validates and executes.
 Governance promotes or rejects.
 ```
 
-## 13. Future Ensemble With Dynamic Nodes
+## 15. Future Ensemble With Dynamic Nodes
 
 The future ensemble should combine several model families:
 
@@ -511,7 +617,7 @@ FAIL_CLOSED
 ESCALATE
 ```
 
-## 14. Stigmergic Processing
+## 16. Stigmergic Processing
 
 The proposed stigmergic layer adds memory as a trace field.
 
@@ -551,7 +657,7 @@ Patient says "BP is fine"
 
 This fills the gap where one weak signal is not enough, but multiple weak signals should accumulate.
 
-## 15. VAMS / Hopfield Memory Processing
+## 17. VAMS / Hopfield Memory Processing
 
 The proposed VAMS layer is associative memory for near-miss shapes.
 
@@ -613,7 +719,7 @@ block autonomous refill until verified
 
 But deterministic ESS / BSG still enforce the final autonomy cap.
 
-## 16. Falsifier Processing
+## 18. Falsifier Processing
 
 The falsifier layer answers:
 
@@ -638,44 +744,55 @@ if unresolved:
 
 This converts safety from vague refusal to operational closure.
 
-## 17. Final System Methodology
+## 19. Final System Methodology
 
 A strong final architecture would be:
 
 ```text
 1. Ingest patient encounter.
-2. Extract candidate observations.
-3. Assign source-aware confidence.
-4. Detect distortion, contradiction, red flags, stale data, social/workflow pressure.
-5. Apply static expert-system template.
-6. Ask AI planner for dynamic nodes/ranges/distributions.
-7. Validate AI-proposed graph.
-8. Evaluate node distributions.
-9. Run JRE readiness ensemble.
-10. Run BSG assumption-sufficiency ensemble.
-11. Deposit signals into stigmergic boundary trace.
-12. Encode boundary signature for VAMS recall.
-13. Recall near-miss analogues and complete missing pattern.
-14. Generate falsifiers and next-best questions.
-15. Apply most-restrictive autonomy governor.
-16. Render provider/executive UX:
+2. Parse transcript and extract patient context.
+3. Audit every input line for downstream consumers.
+4. Extract candidate observations.
+5. Reclassify wrong/generic concepts into active-domain slots when supported.
+6. Assign source-aware confidence.
+7. Detect distortion, contradiction, red flags, stale data, social/workflow pressure.
+8. Apply static expert-system template.
+9. Run bounded multi-role LLM candidate pipeline:
+   - extractor,
+   - boundary,
+   - verifier.
+10. Ask AI planner for dynamic nodes/ranges/distributions when static coverage is insufficient.
+11. Validate AI-proposed graph.
+12. Evaluate node distributions.
+13. Run JRE readiness ensemble.
+14. Run BSG assumption-sufficiency ensemble.
+15. Deposit signals into stigmergic boundary trace.
+16. Encode boundary signature for VAMS recall.
+17. Recall near-miss analogues and complete missing pattern.
+18. Generate falsifiers and next-best questions.
+19. Apply most-restrictive autonomy governor.
+20. Render provider/executive UX:
     - statement vs fact
+    - input coverage audit
+    - model/role provenance
     - known unknowns
     - assumption register
     - autonomy boundary
     - next questions
     - operational value
     - mitigation plan
-17. Capture clinician feedback.
-18. Update experience memory, VAMS acceptance, trace priors.
-19. Queue proposed template/rule changes for governance.
+21. Capture clinician feedback.
+22. Update experience memory, VAMS acceptance, trace priors.
+23. Queue proposed template/rule changes for governance.
 ```
 
 ## Technical Thesis
 
 This is an expert-system safety shell whose nodes represent clinical and operational uncertainty variables.
 
-Today those nodes are static and deterministic.
+Today those nodes are mostly static and deterministic, with concept
+reclassification, input coverage auditing, and bounded multi-role LLM candidate
+extraction implemented around them.
 
 The next version uses:
 

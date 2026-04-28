@@ -315,7 +315,7 @@ Current labels can be reframed:
 - "Hidden danger signals" -> **Interpretation Boundary Breaches**
 - "Black Swan Guardrail" -> **Assumption Sufficiency Check**
 - "Learning & Curation" -> **Boundary Calibration / Governance Review**
-- "LLM Second Opinion" -> **Extractor Cross-Check / Candidate Signal Review**
+- "Generic LLM review" -> **Multi-Role LLM Candidate Pipeline / Extractor Cross-Check**
 
 ## Subtle Case Themes For A Physician executive
 

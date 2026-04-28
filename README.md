@@ -209,23 +209,29 @@ artifacts/            Demo output, reports, provider dashboard HTML
 
 ## How this maps to a real product
 
-In production, the LLM would not be the safety system. The LLM would be the **language interface**.
+In production, the LLM would not be the safety system. LLMs would be bounded
+language and reasoning assistants whose outputs remain advisory until validated.
 
 The safety system would be:
 
-1. **LLM/extractor** — turns natural language into candidate observations.
-2. **Expert-system shell** — verifies required slots, red flags, contradictions, and remote boundaries.
-3. **Uncertainty model** — confidence, missingness, distortion, and source reliability.
-4. **Experience memory** — learns which questions expose hidden risk in which patient/context patterns.
-5. **Stigmergic boundary trace** — keeps unresolved claims, source conflicts, stale data, social/workflow pressure, and feedback from disappearing between turns.
-6. **VAMS-style near-miss recall** — recalls prior boundary failures from partial case signatures and suggests missing nodes or falsifiers.
-7. **Governance queue** — promotes learned rules/templates only after validation, simulation, and review.
-8. **Arbiter** — decides whether the case is ready, needs clarification, needs objective data, or must escalate.
-9. **Provider UI** — shows the boundary map and rule trace, not just a note summary.
+1. **Transcript parser and input coverage audit** — proves every line was consumed or explicitly held for review.
+2. **Bounded multi-role LLM pipeline** — extractor, boundary reasoner, and verifier propose candidate observations, coverage gaps, and missing falsifiers.
+3. **Expert-system shell** — verifies required slots, red flags, contradictions, and remote boundaries.
+4. **Uncertainty model** — confidence, missingness, distortion, and source reliability.
+5. **Experience memory** — learns which questions expose hidden risk in which patient/context patterns.
+6. **Stigmergic boundary trace** — keeps unresolved claims, source conflicts, stale data, social/workflow pressure, and feedback from disappearing between turns.
+7. **VAMS-style near-miss recall** — recalls prior boundary failures from partial case signatures and suggests missing nodes or falsifiers.
+8. **Governance queue** — promotes learned rules/templates only after validation, simulation, and review.
+9. **Arbiter** — decides whether the case is ready, needs clarification, needs objective data, or must escalate.
+10. **Provider UI** — shows the boundary map and rule trace, not just a note summary.
 
 This is designed to be inserted into a telehealth or autonomous-intake pipeline before refills, triage, symptom assessment, or chronic disease check-ins.
 
-The current demo implements the deterministic controls and visible mitigation planning. The stigmergic trace and VAMS memory are documented as the next implementation layer, with memory output constrained to advisory candidate risks/questions/falsifiers rather than clinical authorization.
+The current demo implements transcript intake, input coverage auditing,
+deterministic controls, bounded multi-role LLM candidate analysis, and visible
+mitigation planning. The stigmergic trace and VAMS memory are documented as the
+next persistence/recall layer, with memory output constrained to advisory
+candidate risks/questions/falsifiers rather than clinical authorization.
 
 ---
 

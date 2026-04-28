@@ -581,7 +581,7 @@ Change these labels in `interactive_demo.py`:
 - `Hidden danger signals` -> `Interpretation Boundary Breaches`
 - `Black Swan Guardrail Check` -> `Assumption Sufficiency Check`
 - `Learning & Curation` -> `Boundary Calibration / Governance Review`
-- `LLM Second Opinion` -> `Extractor Cross-Check / Candidate Signal Review`
+- `Generic LLM review` -> `Multi-Role LLM Candidate Pipeline / Extractor Cross-Check`
 
 Acceptance criteria:
 

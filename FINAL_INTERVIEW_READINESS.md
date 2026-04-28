@@ -45,18 +45,22 @@ Current real capabilities:
 - Deterministic Black Swan Guardrail autonomy cap.
 - Human-disclosure pressure detection for embarrassment, stigma, misconstrued medical facts, or fear-curated histories.
 - Human-defense-pattern detection for somatic amplification, reassurance seeking, anxiety-labeling, stoic minimization, and denial.
-- Input Coverage Audit proving each transcript line was used as patient context, mapped to a domain concept, routed to JRE/BSG, sent to the async LLM extractor, or explicitly held for review.
-- Provenance display separating curated rules, AI candidate signals, learned priors, memory hooks, and final governor authority.
-- External LLM candidate-signal extraction through OpenRouter.
+- Input Coverage Audit proving each transcript line was used as patient context, mapped to a domain concept, routed to JRE/BSG, sent to the async LLM candidate pipeline, or explicitly held for review.
+- Provenance display separating curated rules, bounded LLM candidate signals, learned priors, memory hooks, and final governor authority.
+- External multi-role LLM candidate pipeline through OpenRouter:
+  - fast semantic extractor,
+  - clinical boundary reasoner,
+  - adversarial verifier,
+  - post-governor patient/workflow roles configured but disabled by default.
 - Final Recommendations page synthesized from actual analysis output, including a Human Factors Boundary that turns defense/disclosure cues into concrete inference limits, next-question strategy, and LLM prompt constraints.
 - Governance review and clinician feedback memory prototype.
 
 Verification performed:
 
-- Full local test suite: `333 passed`.
+- Full local test suite: `334 passed`.
 - Live deployed API accepted arbitrary pasted-style encounter data with no pre-tagged concepts.
 - Live deployed API returned `ESCALATE` and `T0_EMERGENCY_OR_HARD_STOP` for the cost-fear exertional chest-discomfort case.
-- Live deployed LLM endpoint returned candidate findings using `qwen/qwen3.6-flash`.
+- Live deployed LLM endpoint returned candidate findings from `extractor`, `boundary`, and `verifier` roles using `qwen/qwen3.6-flash`.
 
 ## What Must Not Be Oversold
 
@@ -64,7 +68,7 @@ Be precise:
 
 - The deterministic expert-system and guardrail layers are implemented.
 - The paste/edit/analyze workflow is implemented.
-- The external LLM candidate extractor is implemented.
+- The external multi-role LLM candidate pipeline is implemented and bounded as advisory.
 - The experience memory is implemented as a small in-memory prototype.
 - The VAMS/stigmergic layer should be described as governed memory hooks and a prototype recall/trace design, not as a production Hopfield/VAMS memory system.
 - The domains are safety-template coverage scaffolds, not production clinical protocols.
@@ -91,10 +95,11 @@ INTERVIEW_DEMO_CHEAT_SHEET.md
 5. Analyze the encounter.
 6. Show `Statement vs Fact`.
 7. Show `Provenance & Authority`.
-8. Show `Known Unknowns Map`.
-9. Show `Safety Decision` and `Autonomy Boundary`.
-10. Open `Final Recommendations`.
-11. Show `Governance Review` only after the core point is understood.
+8. In `Provenance & Authority`, point to the bounded LLM roles and say: "The models propose; the governor disposes."
+9. Show `Known Unknowns Map`.
+10. Show `Safety Decision` and `Autonomy Boundary`.
+11. Open `Final Recommendations`.
+12. Show `Governance Review` only after the core point is understood.
 
 Suggested opening:
 
@@ -136,7 +141,7 @@ Objection: This looks like rules.
 
 Answer:
 
-> The current layer is deliberately inspectable. The next architecture is AI-generated expert-system graphs with deterministic validation, simulation, clinician feedback, and governed promotion.
+> The current layer is deliberately inspectable. I added bounded LLM roles for semantic breadth, boundary reasoning, and adversarial verification, but they remain advisory. The next architecture is AI-generated expert-system graphs with deterministic validation, simulation, clinician feedback, and governed promotion.
 
 Objection: Memory can create unsafe drift.
 
@@ -156,7 +161,7 @@ Highest-value next steps:
 
 1. Add browser-level end-to-end tests for paste transcript, analyze, LLM retry, and final recommendations.
 2. Make memory persistent rather than process-local.
-3. Add a model/latency display for the LLM extractor.
+3. Add latency and cost telemetry for each LLM role.
 4. Add a downloadable clinician handoff from Final Recommendations.
 5. Keep historical planning docs generic and free of named-company references.
 6. Implement production-grade governed template promotion with simulation cases and review status.

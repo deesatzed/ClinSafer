@@ -5,7 +5,9 @@
 ```text
 Patient conversation / intake form
         ↓
-Observation extractor
+Transcript parser + input coverage audit
+        ↓
+Observation extractor + concept reclassifier
         ↓
 Reliability scorer
         ↓
@@ -15,9 +17,11 @@ MUD classifier: missing / uncertain / distorted / contradictory / unknowable
         ↓
 CLEAR next-question selector
         ↓
-Mitigation planner
+Black Swan Guardrail assumption layer
         ↓
-Judgment Readiness Arbiter
+Most-restrictive autonomy governor
+        ↓
+Mitigation planner + final recommendations
         ↓
 Provider boundary map + patient-safe clarification
 ```
@@ -60,6 +64,41 @@ Rather than relying on opaque LLM judgment, safety-critical rules are explicit:
 - Red-flag patterns
 - Remote-unknowable elements
 - Rule traces
+
+### Bounded multi-role LLM pipeline
+
+The deployed interactive demo no longer represents the LLM as one generic
+"second opinion." It exposes bounded roles:
+
+- `extractor`: fast semantic extraction of candidate red flags, wrong labels,
+  human distortion, and coverage gaps.
+- `boundary`: clinical boundary reasoning about what makes automation unsafe and
+  which falsifiers are still missing.
+- `verifier`: adversarial audit for ignored transcript lines, false negatives,
+  and unsafe reassurance.
+- `patient_comm`: post-governor patient-language drafting only.
+- `workflow`: post-governor clinician/workflow synthesis only.
+
+The default async safety pass runs `extractor,boundary,verifier` in parallel.
+All LLM roles are advisory. They can propose review targets and missing
+falsifiers, but they cannot authorize care, downgrade a guardrail, prescribe,
+close a case, or independently create the final autonomy boundary.
+
+Role-specific model configuration is exposed through environment variables:
+
+```text
+OPENROUTER_ANALYSIS_ROLES=extractor,boundary,verifier
+OPENROUTER_EXTRACTOR_MODEL=qwen/qwen3.6-flash
+OPENROUTER_BOUNDARY_MODEL=qwen/qwen3.6-flash
+OPENROUTER_VERIFIER_MODEL=qwen/qwen3.6-flash
+OPENROUTER_PATIENT_MODEL=qwen/qwen3.6-flash
+OPENROUTER_WORKFLOW_MODEL=qwen/qwen3.6-flash
+OPENROUTER_MAX_PARALLEL_ROLES=3
+```
+
+The UI shows role, model, purpose, and authority so a technical reviewer can see
+which layer produced a signal and whether that signal is allowed to affect
+automation.
 
 ### Stigmergic boundary traces
 
@@ -127,17 +166,30 @@ The prototype combines:
 
 The score is intentionally transparent rather than optimized. A production version would calibrate weights through outcomes and governance review.
 
+## Current Guarantees
+
+The deployed app now enforces these demo-level guarantees:
+
+1. Every submitted line appears in the Input Coverage Audit.
+2. Wrong or generic concepts, including manual `red_flag`, are treated as hints
+   and reclassified into active domain slots when the text supports it.
+3. Unknown or unmapped observations are not neutral; they create review findings
+   and cannot support closure.
+4. Missing data is not treated as absent data.
+5. LLM findings are candidate signals only.
+6. The most-restrictive governor combines JRE and BSG states before any final
+   recommendation is rendered.
+
 ## Future extension
 
-1. Replace keyword extraction with LLM extraction while keeping deterministic safety gates.
-2. Add specialty-specific pathway packs.
-3. Connect to EHR/pharmacy/device sources to verify objective data.
-4. Use outcome feedback to update distortion priors and question-yield estimates.
-5. Add `BoundaryTraceField` and `BoundarySelfModel` for stigmergic mitigation of repeated weak signals.
-6. Add VAMS-style `AssociativeCaseMemory` for near-miss recall from sparse case signatures.
-7. Add falsifier planning: what would disprove danger, what would disprove reassurance, and what evidence changes the autonomy cap.
-8. Add provider UI with boundary cards and “why not ready?” summaries.
-9. Build A/B studies: ordinary intake vs uncertainty-aware intake.
+1. Add specialty-specific pathway packs.
+2. Connect to EHR/pharmacy/device sources to verify objective data.
+3. Use outcome feedback to update distortion priors and question-yield estimates.
+4. Add `BoundaryTraceField` and `BoundarySelfModel` for stigmergic mitigation of repeated weak signals.
+5. Add VAMS-style `AssociativeCaseMemory` for near-miss recall from sparse case signatures.
+6. Add falsifier planning: what would disprove danger, what would disprove reassurance, and what evidence changes the autonomy cap.
+7. Add governed AI-generated dynamic templates: LLM proposes nodes, ranges, distributions, and rules; validators decide what can execute.
+8. Build A/B studies: ordinary intake vs uncertainty-aware intake.
 
 ## Black Swan Guardrail Layer extension
 

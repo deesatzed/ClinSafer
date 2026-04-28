@@ -1,347 +1,183 @@
-# Judgment Readiness Engine — Handoff Packet
-**Generated:** 2026-04-27
-**Branch:** N/A (no git repo initialized in `ver2/judgment_readiness_engine/`)
-**Source:** `/Users/o2satz/Downloads/DontEatCrowe/ver2/judgment_readiness_engine/`
+# ClinSafer / Judgment Readiness Engine Handoff
 
----
+**Updated:** 2026-04-28
+**Repo:** `https://github.com/deesatzed/ClinSafer.git`
+**Live app:** `https://clinsafer.fly.dev/`
+**Latest implemented commit:** `7d2e524 Add bounded multi-role LLM pipeline`
 
-## Quick Resume Checklist
-- [ ] Navigate to `ver2/judgment_readiness_engine/`
-- [ ] Ensure Python >=3.10 with `fastapi`, `uvicorn`, `pydantic`, `pytest` installed
-- [ ] Copy `.env.example` to `.env` and add `OPENROUTER_API_KEY` (optional — runs fully without it)
-- [ ] Run `python -m pytest tests/ -x --tb=short -q` — expect **333 passed**
-- [ ] Run `python interactive_demo.py` — opens at `http://localhost:8001`
-- [ ] Review "Current Blockers" section below
+This is an interview/demo artifact, not a clinical protocol, medical device, or
+production triage system.
 
-## AI Continuity Checklist
-- [ ] This is the first handoff packet — no prior handoff to import
-- [ ] Open assumptions imported: 0
-- [ ] Open debt items imported: 0
-- [ ] Open error references imported: 0
-- [ ] Verification suite executed: 311/311 passing
-- [ ] Next actions prioritized (P0/P1/P2): see below
+## Current State
 
----
+The app is a governed clinical-AI boundary layer. It asks:
 
-## What This Project Does
-Judgment Readiness Engine (JRE) + Black Swan Guardrail Layer (BSG) — a deterministic, expert-system prototype for clinical AI safety. JRE asks "Do we have enough reliable information to act?" and BSG asks "Are we still inside the world where this pathway is allowed to act?" The updated mitigation plan adds visible case-level controls plus future stigmergic boundary traces, VAMS-style near-miss recall, and governed template promotion. This is an interview/demo artifact for a clinical AI company, **NOT** a clinical protocol or medical device.
+- What did the patient actually say?
+- What can safely be treated as fact?
+- What remains missing, distorted, contradictory, stale, or unknowable remotely?
+- Which layer produced each signal?
+- What is the AI allowed to do next?
 
-**Tech Stack:** Python 3.13.9, stdlib-only core engine, FastAPI/Uvicorn/Pydantic for API/demo layers
-**Architecture Pattern:** Monolith — two complementary engines (JRE + BSG) with multiple presentation layers (CLI, static HTML dashboard, API server, interactive browser demo)
+The core safety invariant is:
 
----
+> Models propose candidate signals; deterministic rules, guardrails, and the
+> most-restrictive governor decide the autonomy boundary.
 
-## Project Structure
-```
-judgment_readiness_engine/           (14,477 total lines of code)
-├── jre/                             Core engine package (3,487 lines)
-│   ├── __init__.py                  Public exports
-│   ├── models.py                    All dataclasses — no logic (160 lines)
-│   ├── templates.py                 Domain slots, red-flags, contradiction rules, CLEAR mappings (401 lines)
-│   ├── engine.py                    JudgmentReadinessEngine — extraction, scoring, state decisions (1,263 lines)
-│   ├── black_swan.py                BlackSwanGuardrailEngine — sentinel/integrity rules, assumption register (909 lines)
-│   ├── experience.py                ExperienceMemory — distortion priors, EMA feedback loop (190 lines)
-│   ├── llm_augment.py               Optional LLM detection via OpenRouter (423 lines)
-│   ├── observability.py             Structured JSON logging for pipeline decisions (268 lines)
-│   ├── sensitivity.py               Threshold sensitivity analysis (522 lines)
-│   └── synthetic_data.py            Hand-authored BASE_CASES + mutation generator (317 lines)
-├── demo.py                          JRE-only CLI demo (4,965 bytes)
-├── black_swan_demo.py               BSG CLI demo + HTML dashboard (6,794 bytes)
-├── unified_demo.py                  All 23 cases through both engines → 643KB HTML dashboard (2,826 lines)
-├── api_server.py                    FastAPI REST API wrapper — /evaluate, /jre, /bsg, /feedback, etc. (386 lines)
-├── interactive_demo.py              Interactive clinical safety demo — progressive walkthrough with mitigation plan
-├── MITIGATION_PLAN.md               Stigmergic/VAMS mitigation plan and implementation sequence
-├── tests/                           Test suite (4,334 lines)
-│   ├── test_jre.py                  63 tests — engine core
-│   ├── test_black_swan_guardrails.py 24 tests — all 9 sentinel + 8 integrity rules
-│   ├── test_unified_demo.py         115 tests — pipeline, ground truth, outputs
-│   ├── test_api_server.py           32 tests — all API endpoints, validation
-│   ├── test_interactive_demo.py     45 tests — interactive demo endpoints, sections
-│   ├── test_observability.py        20 tests — structured logging
-│   └── test_sensitivity.py          12 tests — threshold analysis
-├── data/                            Synthetic dataset (JSONL + CSV)
-├── artifacts/                       Generated HTML dashboards, JSON reports, CSV matrices
-├── pyproject.toml                   Project config (stdlib-only, optional deps)
-└── .env.example                     Environment template (OPENROUTER_API_KEY)
-```
+## What Is Implemented
 
-**Entry Points:**
-- `python interactive_demo.py` — Interactive clinical safety demo at http://localhost:8001
-- `python api_server.py` — REST API at http://localhost:8000
-- `python unified_demo.py` — Generate unified_dashboard.html (all 23 cases)
-- `python demo.py --all` — JRE-only CLI demo
-- `python black_swan_demo.py --all` — BSG CLI demo
+- Transcript-first workflow with a large paste-transcript entry path.
+- Context extraction from transcript: age, concern, domain, PMH, medications.
+- Editable dialogue rows after parsing.
+- Concept inference for blank concepts.
+- Concept reclassification for wrong or generic concepts.
+- Manual `red_flag` labels preserved as safety hints and remapped to concrete
+  domain slots when supported.
+- Input Coverage Audit for every submitted line.
+- Deterministic Judgment Readiness Engine.
+- Deterministic Black Swan Guardrail Engine.
+- Cross-domain sentinel rules including back pain plus neuro/bladder language.
+- Human-factor boundaries for embarrassment, stigma, fear-curated history,
+  somatic amplification, reassurance seeking, stoic minimization, and denial.
+- Final Recommendations page focused on actionable clinician/patient output.
+- Bounded multi-role LLM candidate pipeline through OpenRouter.
+- Governance review and in-memory feedback/experience prototype.
+- Fly deployment.
 
-**Key Modules:**
-| Module | Path | Purpose | Status |
-|--------|------|---------|--------|
-| JRE Engine | `jre/engine.py` | Observation extraction, MUD classification, CLEAR questions, JRI scoring | ✅ |
-| BSG Engine | `jre/black_swan.py` | Sentinel/integrity rules, assumption register, autonomy tier | ✅ |
-| Experience Memory | `jre/experience.py` | Distortion priors, EMA feedback loop | ✅ |
-| LLM Augmentation | `jre/llm_augment.py` | OpenRouter-based detection, rule/case suggestion | ✅ |
-| API Server | `api_server.py` | FastAPI REST wrapper | ✅ |
-| Interactive Demo | `interactive_demo.py` | 4-screen progressive walkthrough for healthcare executive and technical audiences | ⚠️ |
-| Unified Dashboard | `unified_demo.py` | Static 643KB HTML with all 23 cases | ✅ |
+## Bounded Multi-Role LLM Pipeline
 
----
+Implemented in `jre/llm_augment.py` and surfaced in `interactive_demo.py`.
 
-## How to Run
+Enabled by default:
 
-### Local Development
-```bash
-cd /Users/o2satz/Downloads/DontEatCrowe/ver2/judgment_readiness_engine
+| Role | Purpose | Authority |
+| --- | --- | --- |
+| `extractor` | Fast semantic extraction of red flags, wrong labels, human distortion, and coverage gaps. | Advisory only. Can add review targets, never authorize care. |
+| `boundary` | Clinical boundary reasoning: what makes automation unsafe and which falsifiers are missing. | Advisory only. Can recommend hold/verify targets for deterministic validation. |
+| `verifier` | Adversarial audit for ignored lines, false negatives, wrong concepts, and unsafe reassurance. | Advisory only. Can force review, never downgrade a guardrail. |
 
-# Setup (one-time)
-pip install fastapi uvicorn pydantic pytest httpx
+Configured but disabled by default:
 
-# Interactive Demo (primary deliverable)
-python interactive_demo.py
-# → Opens at http://localhost:8001
+| Role | Purpose | Authority |
+| --- | --- | --- |
+| `patient_comm` | Patient-facing language after the governed disposition is set. | Cannot change disposition. |
+| `workflow` | Clinician/workflow synthesis after the governed disposition is set. | Cannot change autonomy tier. |
 
-# REST API
-python api_server.py
-# → Opens at http://localhost:8000
+Fly secrets currently set:
 
-# Static Dashboard
-python unified_demo.py
-# → Generates artifacts/unified_dashboard.html
+```text
+OPENROUTER_ANALYSIS_ROLES=extractor,boundary,verifier
+OPENROUTER_EXTRACTOR_MODEL=qwen/qwen3.6-flash
+OPENROUTER_BOUNDARY_MODEL=qwen/qwen3.6-flash
+OPENROUTER_VERIFIER_MODEL=qwen/qwen3.6-flash
+OPENROUTER_PATIENT_MODEL=qwen/qwen3.6-flash
+OPENROUTER_WORKFLOW_MODEL=qwen/qwen3.6-flash
+OPENROUTER_MAX_PARALLEL_ROLES=3
 ```
 
-### Tests
-```bash
-python -m pytest tests/ -v
-```
-**Current Status:** 333 passing, 0 failing, 0 skipped
-**Known Failures:** none
+Live smoke on 2026-04-28:
 
-### Verification Suite
-```bash
-python -m pytest tests/ -x --tb=short -q
-```
-**Pass Condition:** `333 passed` (zero failures)
-
----
-
-## Current State Assessment
-
-### What's Working ✅
-- JRE engine — 63 tests, all distortion detection, MUD classification, CLEAR questions, source weighting, gestalt patterns, modality adaptations
-- BSG engine — 24 tests, all 9 sentinel + 8 integrity rules, assumption register, autonomy tier cap
-- Unified demo — 115 tests, all 23 cases with ground truth validation, HTML/JSON/CSV/Markdown output
-- API server — 32 tests, 9 endpoints, input validation, clinician feedback loop, log rotation
-- Interactive demo backend — progressive analysis sections now include `Mitigation Plan`, feedback, experience memory
-- Observability — 20 tests, structured JSON logging
-- Sensitivity analysis — 12 tests, threshold variation impact measurement
-
-### What's Incomplete ⚠️
-- **Interactive demo encounter screen (Screen 2)** — Backend data and JS look correct in all automated tests, but user reports text content is invisible in the browser after clicking a case. Likely a browser caching issue from earlier broken code, but needs manual browser verification with hard-refresh (Cmd+Shift+R). Error handling has been added.
-- **Interactive demo content richness** — User feedback: the static unified_dashboard.html has ~50 data points per case with great material; the interactive demo shows the same data but the user wants it to feel as rich as the dashboard, just organized progressively. The 8 analysis sections exist but may need visual polish.
-
-### What's Broken ❌
-- Nothing is broken per test suite (311/311 pass)
-- The encounter screen bug described above is unconfirmed — could not reproduce headlessly
-
-### Current Blockers 🚧
-- **Manual browser testing required** — Restart server (`python interactive_demo.py`), hard-refresh browser, click a case, verify encounter screen shows patient context banner, Q&A dialogue, and narrative sidebar with text visible
-- If content is still invisible after hard-refresh, open browser developer console (Cmd+Opt+I → Console tab) — the new error handling will log `selectCase error:` or `renderEncounter: no case data` if something fails
-
-### Feature Completion Matrix
-| Feature | Status | Evidence | Gap to Done | Priority |
-|---------|--------|----------|-------------|----------|
-| Screen 1: Case Selection Grid | ✅ | `test_interactive_demo.py::TestCasesEndpoint` | — | — |
-| Screen 2: Encounter Display | ⚠️ | Tests pass, user reports invisible text | Manual browser verify + hard-refresh | P0 |
-| Screen 3: Progressive Analysis (12 sections) | ✅ | `TestAnalysisEndpoint` | — | — |
-| Screen 4: Learning & Curation | ✅ | `TestFeedbackEndpoint`, `TestExperienceEndpoint` | — | — |
-| LLM Suggest Rule/Case | ✅ | `TestSuggestEndpoints` (graceful without key) | — | — |
-| Editable Encounter (contenteditable) | ✅ | `TestEditedEncounter` | — | — |
-| LLM Second Opinion (Section 8) | ✅ | Async /demo/llm-analyze endpoint | Needs OPENROUTER_API_KEY | P2 |
-| API Server | ✅ | `test_api_server.py` (32 tests) | — | — |
-| Core JRE Engine | ✅ | `test_jre.py` (63 tests) | — | — |
-| Core BSG Engine | ✅ | `test_black_swan_guardrails.py` (24 tests) | — | — |
-
----
-
-## Recent Changes (This Session)
-
-| Change | File(s) | Why |
-|--------|---------|-----|
-| Added mitigation plan and demo section | `MITIGATION_PLAN.md`, `interactive_demo.py`, docs | Shows current controls plus stigmergic/VAMS/governance next layers |
-| Created interactive demo | `interactive_demo.py` (2,444 lines) | Stakeholders need a guided walkthrough, not 643KB dump |
-| Added LLM suggestion methods | `jre/llm_augment.py` | `suggest_rules()` and `suggest_case()` for learning screen |
-| Created test suite | `tests/test_interactive_demo.py` (634 lines, 45 tests) | Validate all 8 endpoints and section builders |
-| Fixed case selection (onclick) | `interactive_demo.py` | JSON.stringify in onclick broke on em-dashes/quotes in narratives; switched to index-based `selectCaseByIndex(i)` |
-| Added error handling to encounter render | `interactive_demo.py` | User reported invisible content; added try/catch + null guards + console.error + toast |
-
-**Uncommitted Changes:** All changes are uncommitted (no git repo)
-**Stashed Work:** N/A
-
----
-
-## Configuration & Secrets
-
-### Environment Variables
-| Variable | Purpose | Where to Get |
-|----------|---------|--------------|
-| `OPENROUTER_API_KEY` | Optional LLM-augmented detection | Copy from `.env.example`, get key at openrouter.ai |
-| `OPENROUTER_MODEL` | Override LLM model (user selects per policy) | Default: `qwen/qwen3.6-flash` |
-
-### External Dependencies
-| Service | Purpose | Local Alternative |
-|---------|---------|-------------------|
-| OpenRouter API | LLM analysis for Section 8 + rule/case suggestion | Runs fully without it (regex-only mode) |
-
----
-
-## Known Issues & Tech Debt
-- [ ] **Encounter screen visibility bug** — User-reported, not reproducible headlessly. Error handling added. Needs manual browser test with hard-refresh. **P0**
-- [ ] **No git repo** — The `ver2/judgment_readiness_engine/` directory is not under version control. Consider `git init`. **P1**
-- [ ] **English-only patterns** — All regex and NLP patterns are English. Known limitation, documented. **P2**
-- [ ] **Hand-tuned thresholds** — No real outcome data to calibrate against. Sensitivity analysis quantifies impact but doesn't optimize. **P2**
-- [ ] **`unified_demo.py.bak`** — 73KB backup file sitting in project root. Can be deleted. **P2**
-
----
-
-## Next Steps (Priority Order)
-1. **P0: Verify encounter screen in browser** — Restart server, hard-refresh (Cmd+Shift+R), click a case, confirm text appears. Check console for errors. If still broken, the new `console.error` / `showToast` will identify the cause.
-2. **P0: If encounter still broken** — Open browser DevTools Console, reproduce the click, look for JS errors. The try/catch will catch and display them. The most likely remaining cause is a stale browser cache.
-3. **P1: Visual polish** — User wants the interactive demo to feel as rich as the unified_dashboard.html. The 8 analysis sections have the data but may need better visual formatting (wider tables, color-coded severity bars, tooltip explanations).
-4. **P1: Init git repo** — `git init && git add -A && git commit -m "Initial: JRE+BSG interactive demo, 311 tests"` to enable version control.
-5. **P2: Mobile responsive testing** — CSS includes `@media (max-width: 768px)` breakpoints but untested on actual mobile.
-
----
-
-## Key Files Reference
-| File | Purpose | When to Modify |
-|------|---------|----------------|
-| `interactive_demo.py` | Interactive clinical safety demo (primary deliverable) | Any demo UX change |
-| `jre/engine.py` | JRE core — extraction, scoring, state decisions | New domain, new trap, threshold change |
-| `jre/black_swan.py` | BSG core — sentinel/integrity rules, autonomy tiers | New guardrail rule |
-| `jre/templates.py` | Domain slots, red-flag patterns, contradiction rules | New domain, new pattern |
-| `jre/experience.py` | Distortion priors, EMA feedback | New domain priors |
-| `jre/llm_augment.py` | OpenRouter LLM integration | Model change, prompt tuning |
-| `api_server.py` | REST API | New endpoint, validation change |
-| `unified_demo.py` | Static dashboard generator | Dashboard content change |
-| `tests/test_interactive_demo.py` | Interactive demo tests | Any demo endpoint change |
-
----
-
-## Open Questions / Decisions Needed
-- **Encounter screen bug**: Is the user seeing a stale cached page, or is there a genuine rendering bug? Manual browser testing with DevTools open will resolve this.
-- **Content richness**: How much of the unified_dashboard.html's ~50 data points per case should appear in the progressive analysis? Currently all 8 sections have the data but the presentation is functional, not polished.
-- **LLM model selection**: The `OPENROUTER_MODEL` env var defaults to `qwen/qwen3.6-flash`. User policy requires human selection of model versions.
-
----
-
-## Architecture Overview
-```
-CaseInput (statements + patient context)
-  → JudgmentReadinessEngine.evaluate()
-    → Observation extractor (confidence scoring, trap/distortion detection)
-    → Slot findings + contradiction findings + red-flag findings
-    → ReadinessScores → State decision → CLEAR questions
-    → ReadinessReport
-      → BlackSwanGuardrailEngine.evaluate(case, readiness_report)
-        → Sentinel scan (9 rules: stroke, anaphylaxis, self-harm, etc.)
-        → Integrity scan (8 rules: injection, gaming, wrong patient, etc.)
-        → Operating envelope check
-        → Assumption register (8 named assumptions: ok/weak/breached)
-        → Autonomy tier cap (T0–T4)
-        → GuardrailReport
-          → Combined state = most_restrictive(jre_state, bsg_state)
+```text
+/demo/llm-analyze
+model: qwen/qwen3.6-flash
+extractor: success, 2 findings
+boundary: success, 4 findings
+verifier: success, 4 findings
+total LLM candidate findings: 10
 ```
 
-**States (JRE):** READY, CLARIFY, NEED_OBJECTIVE_DATA, ESCALATE
-**States (BSG):** ALLOW_WITH_AUDIT, HOLD_AND_VERIFY, ROUTE_CLINICIAN, FAIL_CLOSED, ESCALATE
-**Domains:** chest_discomfort, dyspnea_respiratory, med_refill_hypertension, uti_symptoms, rash, diabetes_hyperglycemia, headache_migraine
-**Test Cases:** 10 BASE_CASES + 13 BLACK_SWAN_CASES = 23 total
+## Input Coverage Guarantee
 
----
+Every row in the encounter is audited. For each row the UI shows:
 
-## Error Log
+- supplied concept,
+- inferred concept,
+- effective concept,
+- source,
+- reclassification status,
+- consumers:
+  - observation extractor,
+  - patient-context extractor,
+  - JRE template slot,
+  - JRE rules,
+  - Black Swan Guard,
+  - async LLM extractor payload,
+  - concept reclassifier,
+- safety effect,
+- status.
 
-| Error | Root Cause | Fix | Status |
-|-------|-----------|-----|--------|
-| LLM API timeout in tests (30s) | `_build_llm_section` called `_llm.analyze_case()` making real HTTP calls | Decoupled LLM from analysis pipeline; JRE/BSG use regex-only; added `/demo/llm-analyze` async endpoint | ✅ Fixed |
-| Suggest endpoint tests timeout | LLM API key present, causing real HTTP calls | Tests temporarily disable `api_key` to force graceful degradation | ✅ Fixed |
-| Determinism test failure | Shared `ExperienceMemory` singleton modified by feedback tests | Compare states/structure instead of raw observation data | ✅ Fixed |
-| Case selection not working | `JSON.stringify(case)` in onclick attribute broke on em-dashes/quotes | Index-based `selectCaseByIndex(i)` with `allCases[]` array | ✅ Fixed |
-| Encounter screen shows empty content | User-reported invisible text after case click | Added try/catch + null guards + console.error + toast | ⚠️ Needs browser verify |
+Unknown/unmapped rows are not neutral. They create review findings and cannot
+support closure or reassurance.
 
----
+## Verification
 
-## Appendix: Machine-Readable Summary
-```json
-{
-  "project": "judgment-readiness-engine",
-  "generated": "2026-04-27",
-  "repo": {
-    "branch": null,
-    "commit": null,
-    "commit_date": null,
-    "uncommitted_changes": true,
-    "stashed_work": 0
-  },
-  "stack": {
-    "language": "Python",
-    "language_version": "3.13.9",
-    "framework": "FastAPI",
-    "framework_version": "0.135.3"
-  },
-  "health": {
-    "tests_passing": 311,
-    "tests_failing": 0,
-    "tests_skipped": 0,
-    "lint_clean": null,
-    "type_check_clean": null
-  },
-  "status": {
-    "working": [
-      "jre_engine",
-      "bsg_engine",
-      "api_server",
-      "unified_demo",
-      "interactive_demo_backend",
-      "interactive_demo_case_grid",
-      "interactive_demo_analysis",
-      "interactive_demo_learning",
-      "experience_memory",
-      "observability",
-      "sensitivity_analysis"
-    ],
-    "incomplete": [
-      "interactive_demo_encounter_screen_rendering"
-    ],
-    "broken": [],
-    "blockers": [
-      "Manual browser verification of encounter screen after hard-refresh"
-    ]
-  },
-  "continuity": {
-    "previous_handoff_loaded": false,
-    "assumptions_imported": 0,
-    "debt_items_imported": 0,
-    "error_refs_imported": 0
-  },
-  "feature_completion_matrix": [
-    {"feature": "Screen 1: Case Grid", "status": "✅", "evidence": "test_interactive_demo.py::TestCasesEndpoint", "priority": "done"},
-    {"feature": "Screen 2: Encounter", "status": "⚠️", "evidence": "tests pass, user reports invisible text", "priority": "P0"},
-    {"feature": "Screen 3: Analysis", "status": "✅", "evidence": "test_interactive_demo.py::TestAnalysisEndpoint", "priority": "done"},
-    {"feature": "Screen 4: Learning", "status": "✅", "evidence": "test_interactive_demo.py::TestFeedbackEndpoint", "priority": "done"},
-    {"feature": "API Server", "status": "✅", "evidence": "test_api_server.py (32 tests)", "priority": "done"},
-    {"feature": "JRE Engine", "status": "✅", "evidence": "test_jre.py (63 tests)", "priority": "done"},
-    {"feature": "BSG Engine", "status": "✅", "evidence": "test_black_swan_guardrails.py (24 tests)", "priority": "done"}
-  ],
-  "verification_suite": {
-    "command": "python -m pytest tests/ -x --tb=short -q",
-    "pass_condition": "311 passed",
-    "result": "pass"
-  },
-  "next_steps": [
-    {"task": "Verify encounter screen in browser with hard-refresh", "priority": "P0", "scope": "small"},
-    {"task": "Debug encounter if still broken (DevTools console)", "priority": "P0", "scope": "small"},
-    {"task": "Visual polish for analysis sections richness", "priority": "P1", "scope": "medium"},
-    {"task": "Init git repository", "priority": "P1", "scope": "small"},
-    {"task": "Mobile responsive testing", "priority": "P2", "scope": "small"}
-  ]
-}
+Latest local verification:
+
+```text
+python -m py_compile interactive_demo.py jre/llm_augment.py
+python -m pytest -q
+334 passed
+served inline JavaScript parsed with node --check
 ```
+
+Latest live verification:
+
+```text
+/demo/analyze back-pain red-flag smoke:
+HTTP 200
+combined_state: ESCALATE
+guardrails:
+  SENTINEL_BACK_PAIN_NEURO_BLADDER
+  MANUAL_RED_FLAG_REVIEW
+LLM role manifest:
+  extractor qwen/qwen3.6-flash enabled
+  boundary qwen/qwen3.6-flash enabled
+  verifier qwen/qwen3.6-flash enabled
+```
+
+## Key Files
+
+| File | Purpose |
+| --- | --- |
+| `interactive_demo.py` | Main FastAPI single-page demo, transcript workflow, analysis sections, recommendations UI. |
+| `jre/engine.py` | Judgment Readiness Engine, concept inference/reclassification, observations, JRI scoring. |
+| `jre/black_swan.py` | Guardrail engine, sentinels, autonomy caps, assumption register. |
+| `jre/llm_augment.py` | OpenRouter integration, bounded role configs, role prompts, parallel role execution. |
+| `jre/templates.py` | Domain templates, slot specs, red-flag patterns, contradiction rules. |
+| `tests/test_interactive_demo.py` | Interactive endpoint, transcript, coverage, role manifest tests. |
+| `README.md` | Run instructions and OpenRouter/Fly model configuration. |
+| `ARCHITECTURE.md` | System architecture and current/future methodology. |
+| `TECHNICAL_FLOW_FOR_CS_SWE.md` | Detailed CS/SWE methodology flow. |
+| `FINAL_INTERVIEW_READINESS.md` | Demo positioning, limitations, and presentation strategy. |
+
+## Known Limits
+
+- This is not clinically validated.
+- Domain templates are demo coverage scaffolds, not production protocols.
+- Memory is process-local and prototype-level.
+- VAMS/stigmergic layers are represented as governed design hooks and visible
+  mitigation structure, not a production Hopfield memory subsystem.
+- No EHR/device/pharmacy integration exists yet.
+- No outcomes calibration exists yet.
+- No browser-level E2E suite exists yet.
+
+## Next Technical Steps
+
+1. Add browser E2E tests for transcript paste, analyze, LLM retry, and final recommendations.
+2. Add latency/cost telemetry by LLM role.
+3. Persist feedback and boundary traces.
+4. Add dynamic template planner as a draft-only LLM role.
+5. Add deterministic validators for AI-proposed nodes/ranges/distributions.
+6. Add governance queue for proposed rule/template promotion.
+7. Add downloadable clinician handoff.
+
+## Demo Guidance
+
+Use this wording:
+
+> This is not an AI doctor. It is a governed boundary layer around clinical AI.
+> The LLM roles notice candidate risks, but deterministic rules and the
+> most-restrictive governor decide what autonomy is allowed.
+
+Avoid implying any named company lacks these safeguards. The point is to show
+how the candidate thinks across medicine, software, AI behavior, workflow,
+patient psychology, business pressure, and risk governance.

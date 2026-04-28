@@ -19,16 +19,29 @@ The mitigation goal is not to make the app a more aggressive AI doctor. The goal
 
 Already active in `ver2`:
 
+- Transcript-first intake for pasted real encounter dialogue.
+- Input Coverage Audit proving every submitted line is used, reclassified, or explicitly held for review.
+- Concept reclassification for wrong or generic labels, including manual `red_flag`.
 - MUD map for missing, uncertain, distorted, contradictory, objective-needed, and remote-unknowable facts.
 - CLEAR next-question selection.
 - Black Swan Guardrails for assumption failure and autonomy caps.
 - Statement-vs-fact display in Interview Mode.
 - Autonomy boundary showing allowed and blocked actions.
-- Business impact panel for safety, revenue, churn, physician efficiency, and regulatory value.
+- Final Recommendations page focused on action, clinician handoff, patient language, and immediate boundaries.
+- Bounded multi-role LLM candidate pipeline:
+  - extractor,
+  - boundary reasoner,
+  - adversarial verifier.
 
 Mitigation role:
 
 > Prevent unsafe action in the current case.
+
+Safety boundary:
+
+- LLM roles propose candidate signals only.
+- Unknown/unmapped rows are not neutral.
+- The most-restrictive governor still decides final autonomy.
 
 ### 2. Stigmergic Boundary Trace
 
