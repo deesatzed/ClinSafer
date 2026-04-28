@@ -51,6 +51,25 @@ def test_active_bleeding_escalates():
     assert any(f.rule_id == "SENTINEL_ACTIVE_BLEEDING" for f in report.findings)
 
 
+def test_blood_in_sputum_escalates_even_when_added_as_free_text():
+    """Blood in sputum phrasing should not bypass sentinel rules."""
+    case = CaseInput(
+        case_id="test-blood-in-sputum",
+        patient_context=PatientContext(age=59, chief_concern="indigestion and fatigue", domain="chest_discomfort", modality="text"),
+        statements=[
+            Statement(
+                question="Any other symptoms that concern you?",
+                answer="When I wake up in the morning, I cough a little bit of blood in my sputum.",
+                concept=None,
+            ),
+        ],
+    )
+    report = _eval_case(case)
+    assert report.guardrail_state == "ESCALATE"
+    assert any(f.rule_id == "SENTINEL_ACTIVE_BLEEDING" for f in report.findings), \
+        f"Expected SENTINEL_ACTIVE_BLEEDING. Got: {[f.rule_id for f in report.findings]}"
+
+
 def test_copy_paste_detected():
     report = _eval("BS-010-copy-paste-rote-denial")
     assert report.guardrail_state in {"HOLD_AND_VERIFY", "ROUTE_CLINICIAN"}

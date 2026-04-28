@@ -97,7 +97,7 @@
   ---
   4. Features That Were Tested
 
-  327 tests across 7 test files are passing; the interactive demo file includes focused tests for the mitigation section and human-factors recommendations.
+  329 tests across 7 test files are passing; the interactive demo file includes focused tests for mitigation, human-factors recommendations, and free-text bleeding-sentinel regression.
 
   - 63 tests on the core JRE engine: chest pressure escalation, breathing denial detection, thunderclap headache escalation, all 13 contradiction rules, all 9 gestalt patterns (including cross-domain), source conflict
   detection, source reliability weighting, 4 modality adaptations, experience memory updates, escalation probes, outcome feedback (all 4 types), LLM failure handling, edge cases (zero statements, extreme ages), utility

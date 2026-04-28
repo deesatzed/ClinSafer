@@ -1094,6 +1094,8 @@ def normalize_answer(raw: str) -> Any:
 
 def infer_concept(text: str) -> Optional[str]:
     q = text.lower()
+    if re.search(r"\b(cough(?:ing|ed)?(?: up)?.{0,50}\bblood|blood.{0,40}\bsputum|bloody sputum|spit(?:ting)? blood|hemoptysis)\b", q, re.I):
+        return "hemoptysis"
     mappings = [
         ("blood pressure", "home_bp_number"),
         ("glucose", "glucose_number"),

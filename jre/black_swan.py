@@ -202,7 +202,7 @@ SENTINEL_RULES: List[GuardrailRule] = [
     GuardrailRule(
         "SENTINEL_ACTIVE_BLEEDING",
         "medical_sentinel_off_pathway",
-        r"\b(vomit(?:ing)? blood|blood in vomit|black (?:tar(?:ry)? )?stool|bloody stool|blood in stool|cough(?:ing)? (?:up )?blood|hemoptysis|bleeding (?:heavily|won't stop|that won't|that will not|a lot)|soaking through|hemorrhage)\b",
+        r"\b(vomit(?:ing)? blood|blood in vomit|black (?:tar(?:ry)? )?stool|bloody stool|blood in stool|cough(?:ing)?(?: up)?.{0,40}\bblood|blood.{0,30}\bsputum|bloody sputum|spit(?:ting)? blood|hemoptysis|bleeding (?:heavily|won't stop|that won't|that will not|a lot)|soaking through|hemorrhage)\b",
         0.95,
         "Active or significant bleeding language detected, regardless of the primary pathway.",
         "Hard-stop autonomous pathway; urgent clinician review for bleeding source and hemodynamic stability.",

@@ -355,6 +355,41 @@ class TestAnalysisEndpoint:
         assert data["combined_state"] in {"ESCALATE", "HOLD_AND_VERIFY"}
         assert data["recommendations"]["critical_evidence"]
 
+    def test_added_blood_in_sputum_free_text_is_not_treated_as_unknown_supported(self):
+        case = _ALL_CASES["showcase-003-cost-fear-minimizes-alarm"]
+        payload = _make_analyze_payload(case)
+        payload["statements"].append(
+            {
+                "question": "Any other symptoms that concern you?",
+                "answer": "When I wake up in the morning, I cough a little bit of blood in my sputum.",
+                "concept": None,
+                "source": "patient",
+                "metadata": {},
+            }
+        )
+        resp = client.post("/demo/analyze", json=payload)
+        assert resp.status_code == 200
+        data = resp.json()
+
+        assert data["combined_state"] == "ESCALATE"
+
+        observations = _section(data, "observations")["data"]["observations"]
+        assert any(o["concept"] == "hemoptysis" for o in observations)
+
+        boundaries = _section(data, "interpretation_boundaries")["data"]["rows"]
+        hemoptysis_rows = [r for r in boundaries if r["concept"] == "hemoptysis"]
+        assert hemoptysis_rows
+        assert hemoptysis_rows[0]["boundary_status"] == "unsafe_to_infer"
+
+        guardrails = _section(data, "guardrails")["data"]["findings"]
+        assert any(f["rule_id"] == "SENTINEL_ACTIVE_BLEEDING" for f in guardrails)
+
+        llm_section = _section(data, "llm_opinion")["data"]["regex_findings"]
+        assert any(f["rule_id"] == "SENTINEL_ACTIVE_BLEEDING" for f in llm_section)
+
+        evidence_rules = {ev["rule"] for ev in data["recommendations"]["critical_evidence"]}
+        assert "SENTINEL_ACTIVE_BLEEDING" in evidence_rules
+
     def test_mitigation_plan_section_has_learning_layers(self):
         case = BASE_CASES[0]
         resp = client.post("/demo/analyze", json=_make_analyze_payload(case))

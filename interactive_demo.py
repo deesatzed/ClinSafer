@@ -217,6 +217,8 @@ CONCEPT_LABELS = {
     "blood_pressure": "Current blood pressure",
     "renal_function": "Recent kidney function labs",
     "potassium": "Recent potassium result",
+    "hemoptysis": "Coughing blood / blood in sputum",
+    "unknown": "Unclassified added statement",
 }
 
 
@@ -324,6 +326,10 @@ OBJECTIVE_CONCEPTS = {
 
 
 def _slot_question(domain: str, concept: str) -> str:
+    if concept == "hemoptysis":
+        return "How much blood was there, did it happen more than once, are you short of breath, and are you on blood thinners?"
+    if concept == "unknown":
+        return "Classify this added statement into a clinical concept or route it for clinician review before using it to support a decision."
     for slot in DOMAIN_TEMPLATES.get(domain, []):
         if slot.name == concept and slot.clarify_questions:
             return slot.clarify_questions[0]
@@ -377,6 +383,10 @@ def _explicit_claim_for(answer: str, concept: str) -> str:
 
 def _safe_interpretation_for(answer: str, concept: str, confidence: float, status: str) -> str:
     label = _display_concept(concept)
+    if concept == "unknown":
+        return "This added statement is not classified into a validated slot yet; it must stay reviewable and cannot be treated as safely resolved."
+    if concept == "hemoptysis":
+        return "Coughing blood or blood in sputum is a safety-relevant signal that should be treated as present until clarified."
     if concept == "care_context":
         return "The patient is asking to delay care because of cost or work pressure; this raises unsafe-delay and abandonment risk, not clinical reassurance."
     if status == "supported":
@@ -392,6 +402,10 @@ def _safe_interpretation_for(answer: str, concept: str, confidence: float, statu
 
 def _unsafe_inference_for(answer: str, concept: str, status: str) -> str:
     label = _display_concept(concept)
+    if concept == "unknown":
+        return "Do not let unclassified added text bypass sentinel screening, concept inference, or clinician handoff."
+    if concept == "hemoptysis":
+        return "Do not treat 'a little blood' or blood-streaked sputum as low-risk without clarifying amount, recurrence, breathing status, anticoagulants, infection risk, and current stability."
     if status == "supported":
         return ""
     if STALE_BOUNDARY_RE.search(answer):
@@ -421,6 +435,10 @@ def _build_interpretation_boundaries_section(
             status = "unsafe_to_infer"
         elif VAGUE_BOUNDARY_RE.search(answer) or obs.tags:
             status = "weak"
+        if concept == "unknown":
+            status = "unsafe_to_infer"
+        if concept == "hemoptysis":
+            status = "unsafe_to_infer"
         if STALE_BOUNDARY_RE.search(answer):
             status = "unsafe_to_infer"
         if concept in OBJECTIVE_CONCEPTS and not re.search(r"\d", answer):
