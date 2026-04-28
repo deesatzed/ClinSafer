@@ -52,7 +52,7 @@ Current real capabilities:
 
 Verification performed:
 
-- Full local test suite: `332 passed`.
+- Full local test suite: `333 passed`.
 - Live deployed API accepted arbitrary pasted-style encounter data with no pre-tagged concepts.
 - Live deployed API returned `ESCALATE` and `T0_EMERGENCY_OR_HARD_STOP` for the cost-fear exertional chest-discomfort case.
 - Live deployed LLM endpoint returned candidate findings using `qwen/qwen3.6-flash`.

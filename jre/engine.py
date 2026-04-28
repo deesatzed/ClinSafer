@@ -384,14 +384,35 @@ class JudgmentReadinessEngine:
     def _extract_observations(self, case: CaseInput) -> List[Observation]:
         observations: List[Observation] = []
         domain = case.patient_context.domain
+        valid_concepts = {slot.name for slot in self._template_for(domain)}
         for st in case.statements:
-            concept = st.concept or infer_concept(f"{st.question} {st.answer}")
+            inferred_concept = infer_concept(f"{st.question} {st.answer}")
+            supplied_concept = (st.concept or "").strip() if st.concept else ""
+            concept = supplied_concept or inferred_concept
+            generic_manual_flag = supplied_concept.lower() in {
+                "red_flag",
+                "redflag",
+                "alarm",
+                "safety",
+                "urgent",
+                "manual_red_flag",
+            }
+            if generic_manual_flag:
+                concept = inferred_concept or "manual_red_flag"
+            elif supplied_concept and supplied_concept not in valid_concepts and inferred_concept in valid_concepts:
+                concept = inferred_concept
             tags: List[str] = []
             trace: List[str] = []
             raw = st.answer.strip()
             norm = normalize_answer(raw)
             confidence = source_base_confidence(st.source)
             trace.append(f"BASE_SOURCE_CONFIDENCE:{st.source}={confidence:.2f}")
+            if generic_manual_flag:
+                tags.append("manual_red_flag_label")
+                trace.append(f"MANUAL_RED_FLAG_LABEL:{supplied_concept}->{concept}")
+            elif supplied_concept and supplied_concept != concept:
+                tags.append("concept_reclassified_to_domain_slot")
+                trace.append(f"CONCEPT_RECLASSIFIED:{supplied_concept}->{concept}")
 
             has_number = NUMBER_RE.search(raw) is not None
             if VAGUE_WORDS.search(raw) and not (has_number and concept in {"home_bp_number", "glucose_number", "oxygen_saturation", "fever_measured", "respiratory_rate", "vitals"}):
@@ -627,6 +648,19 @@ class JudgmentReadinessEngine:
                 )
             )
             traces.append(RuleTrace("DOMAIN_RED_FLAG_PATTERN", "Domain red flag lexical pattern", raw, f"adds red_flag finding (severity={severity:.3f})"))
+        manual = obs.get("manual_red_flag")
+        if manual:
+            findings.append(
+                Finding(
+                    category="red_flag",
+                    concept="manual_red_flag",
+                    severity=0.80,
+                    reason="User manually labeled this statement as a red flag, but it did not map to a validated domain slot. It must be reviewed rather than ignored.",
+                    rule_id="MANUAL_RED_FLAG_UNMAPPED",
+                    evidence=str(manual.raw_value),
+                )
+            )
+            traces.append(RuleTrace("MANUAL_RED_FLAG_UNMAPPED", "Manual safety label without domain-slot mapping", str(manual.raw_value), "adds red_flag finding"))
         return findings
 
     def _gestalt_findings(

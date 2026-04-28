@@ -370,6 +370,82 @@ class TestAnalysisEndpoint:
         }
         assert "SENTINEL_BACK_PAIN_NEURO_BLADDER" in guardrails
 
+    def test_manual_red_flag_and_wrong_concepts_are_reclassified_for_domain(self):
+        payload = {
+            "case_id": "manual-red-flag-back-pain",
+            "patient_context": {
+                "age": 62,
+                "chief_concern": "lower back pain",
+                "domain": "musculoskeletal_pain",
+                "literacy_hint": "unknown",
+                "language_barrier": False,
+                "has_caregiver": False,
+                "modality": "text",
+                "known_conditions": ["type 2 diabetes", "hypertension", "BPH"],
+            },
+            "statements": [
+                {
+                    "question": "Tell me about your back pain.",
+                    "answer": "Lower back pain after lifting last week.",
+                    "concept": "flank_pain",
+                    "source": "patient",
+                    "metadata": {},
+                },
+                {
+                    "question": "Any numbness or tingling?",
+                    "answer": "Yes, tingling in my left foot at times and in my private areas.",
+                    "concept": "red_flag",
+                    "source": "patient",
+                    "metadata": {},
+                },
+                {
+                    "question": "Any weakness?",
+                    "answer": "My legs feel weaker on stairs, but it may be the pain gets worse.",
+                    "concept": "exertional_component",
+                    "source": "patient",
+                    "metadata": {},
+                },
+                {
+                    "question": "Any issues with urination?",
+                    "answer": "No but my bladder seems more full than usual.",
+                    "concept": "red_flag",
+                    "source": "patient",
+                    "metadata": {},
+                },
+            ],
+            "ground_truth": {},
+        }
+        resp = client.post("/demo/analyze", json=payload)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["combined_state"] == "ESCALATE"
+
+        observations = [
+            o
+            for s in data["sections"]
+            if s["id"] == "observations"
+            for o in s["data"]["observations"]
+        ]
+        concepts = {o["concept"] for o in observations}
+        assert "trauma_mechanism" in concepts
+        assert "neuro_deficit" in concepts
+        assert "bowel_bladder" in concepts
+
+        mud_map = next(s for s in data["sections"] if s["id"] == "mud_map")["data"]["boundary_map"]
+        missing_text = " ".join(mud_map.get("missing", []))
+        assert "neuro_deficit" not in missing_text
+        assert "bowel_bladder" not in missing_text
+        assert "trauma_mechanism" not in missing_text
+
+        guardrails = {
+            f["rule_id"]
+            for s in data["sections"]
+            if s["id"] == "guardrails"
+            for f in s["data"]["findings"]
+        }
+        assert "SENTINEL_BACK_PAIN_NEURO_BLADDER" in guardrails
+        assert "MANUAL_RED_FLAG_REVIEW" in guardrails
+
     def test_defense_pattern_case_has_actionable_human_factor_recommendations(self):
         case = _ALL_CASES["showcase-010-defense-pattern-distortion"]
         resp = client.post("/demo/analyze", json=_make_analyze_payload(case))

@@ -362,6 +362,7 @@ class BlackSwanGuardrailEngine:
         findings: List[GuardrailFinding] = []
 
         findings.extend(self._scan_rules(case, text, ALL_RULES))
+        findings.extend(self._manual_red_flag_findings(case))
         findings.extend(self._operating_envelope_findings(case))
         if readiness_report is not None:
             findings.extend(self._readiness_wrapper_findings(case, readiness_report))
@@ -436,6 +437,27 @@ class BlackSwanGuardrailEngine:
                     control=rule.control,
                     action=rule.action,
                     autonomy_cap=rule.autonomy_cap,
+                )
+            )
+        return out
+
+    def _manual_red_flag_findings(self, case: CaseInput) -> List[GuardrailFinding]:
+        out: List[GuardrailFinding] = []
+        manual_labels = {"red_flag", "redflag", "alarm", "safety", "urgent", "manual_red_flag"}
+        for stmt in case.statements:
+            concept = (stmt.concept or "").strip().lower()
+            if concept not in manual_labels:
+                continue
+            out.append(
+                GuardrailFinding(
+                    "MANUAL_RED_FLAG_REVIEW",
+                    "manual_safety_label",
+                    0.82,
+                    "A user explicitly labeled a statement as a red flag. Manual safety labels cannot be ignored or used as reassurance.",
+                    f"{stmt.question} {stmt.answer}",
+                    "Hold automation and force clinician/safety review unless the statement maps to a stricter sentinel.",
+                    "HOLD_AND_VERIFY",
+                    "T2_CLINICIAN_DRAFT_ONLY",
                 )
             )
         return out
