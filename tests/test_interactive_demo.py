@@ -154,6 +154,10 @@ class TestPageServing:
         assert "Processing Transparency" in html
         assert "dialogue-question-text" in html
         assert "dialogue-concept" in html
+        assert "Start With A Real Transcript" in html
+        assert "Parse Transcript Encounter" in html
+        assert "Why Source and Concept matter" in html
+        assert "parseTranscriptServer" in html
 
     def test_custom_builder_exposes_top_telemedicine_domains(self):
         resp = client.get("/")
@@ -292,6 +296,24 @@ class TestAnalysisEndpoint:
         assert recs["human_factors"]["prompt_guardrails"]
         assert recs["ai_processing"]["prompt_contract"]
         assert recs["governance_actions"]
+
+    def test_parse_transcript_endpoint_classifies_free_text_concepts(self):
+        resp = client.post(
+            "/demo/parse-transcript",
+            json={
+                "transcript": (
+                    "Patient: Cough and fever.\n"
+                    "Clinician: Any blood when you cough?\n"
+                    "Patient: I coughed a little blood in my sputum this morning."
+                )
+            },
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["count"] == 2
+        assert "hemoptysis" in data["concepts"]
+        assert data["statements"][1]["concept"] == "hemoptysis"
+        assert data["statements"][1]["metadata"]["imported_from_transcript"] is True
 
     def test_defense_pattern_case_has_actionable_human_factor_recommendations(self):
         case = _ALL_CASES["showcase-010-defense-pattern-distortion"]

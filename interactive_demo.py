@@ -59,7 +59,7 @@ from jre.templates import (
     CONTRADICTION_RULES,
     ESCALATION_PROBES,
 )
-from jre.engine import SOURCE_SCORING_WEIGHT, GESTALT_PATTERNS
+from jre.engine import SOURCE_SCORING_WEIGHT, GESTALT_PATTERNS, infer_concept
 from jre.experience import OutcomeFeedback
 
 # Import narratives and trap explanations from unified_demo
@@ -183,6 +183,10 @@ class SuggestCaseRequest(BaseModel):
     gap_description: str = ""
 
 
+class TranscriptParseRequest(BaseModel):
+    transcript: str
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -224,6 +228,91 @@ CONCEPT_LABELS = {
 
 def _display_concept(concept: str) -> str:
     return CONCEPT_LABELS.get(concept, concept.replace("_", " ").title())
+
+
+SPEAKER_PREFIX_RE = re.compile(
+    r"^\s*(clinician|doctor|provider|nurse|assistant|system|ai|patient|pt|caregiver|daughter|son|mom|mother|father|device|chart)\s*[:\-]\s*",
+    re.I,
+)
+
+
+def _speaker_for_line(line: str) -> str:
+    match = re.match(r"^\s*([A-Za-z ]{1,20})\s*[:\-]\s*", line)
+    if not match:
+        return ""
+    label = match.group(1).strip().lower()
+    if label in {"patient", "pt"}:
+        return "patient"
+    if label in {"caregiver", "daughter", "son", "mom", "mother", "father"}:
+        return "caregiver"
+    if label in {"device"}:
+        return "device"
+    if label in {"chart"}:
+        return "chart"
+    if label in {"clinician", "doctor", "provider", "nurse", "assistant", "system", "ai"}:
+        return "clinician"
+    return ""
+
+
+def _clean_speaker_line(line: str) -> str:
+    return SPEAKER_PREFIX_RE.sub("", line).strip()
+
+
+def _parse_transcript_text(text: str) -> List[Dict[str, Any]]:
+    """Parse pasted encounter text into governed, editable statement rows."""
+    lines = [line.strip() for line in str(text or "").splitlines() if line.strip()]
+    turns: List[Dict[str, Any]] = []
+    pending_question = ""
+
+    for line in lines:
+        inline_qa = re.match(
+            r"^\s*(?:Q(?:uestion)?|Clinician|Doctor|Provider|Nurse|Assistant|AI|System)\s*[:\-]\s*(.*?)\s+\bA(?:nswer)?\s*[:\-]\s*(.*)$",
+            line,
+            re.I,
+        )
+        question_only = re.match(
+            r"^\s*(?:Q(?:uestion)?|Clinician|Doctor|Provider|Nurse|Assistant|AI|System)\s*[:\-]\s*(.*?)\s*$",
+            line,
+            re.I,
+        )
+        answer_only = re.match(
+            r"^\s*(?:A(?:nswer)?|Patient|Pt|Caregiver|Daughter|Son|Mom|Mother|Father|Device|Chart)\s*[:\-]\s*(.*)$",
+            line,
+            re.I,
+        )
+        speaker = _speaker_for_line(line)
+
+        if inline_qa:
+            q = inline_qa.group(1).strip()
+            a = inline_qa.group(2).strip()
+            concept = infer_concept(f"{q} {a}")
+            turns.append({"question": q, "answer": a, "concept": concept, "source": "patient", "metadata": {"imported_from_transcript": True}})
+            pending_question = ""
+        elif question_only and not answer_only:
+            pending_question = _clean_speaker_line(line)
+        elif answer_only:
+            source = speaker if speaker and speaker != "clinician" else "patient"
+            q = pending_question or "Patient statement"
+            a = answer_only.group(1).strip()
+            turns.append({"question": q, "answer": a, "concept": infer_concept(f"{q} {a}"), "source": source, "metadata": {"imported_from_transcript": True}})
+            pending_question = ""
+        elif speaker == "clinician":
+            pending_question = _clean_speaker_line(line)
+        elif speaker:
+            source = "patient" if speaker == "clinician" else speaker
+            q = pending_question or "Patient statement"
+            a = _clean_speaker_line(line)
+            turns.append({"question": q, "answer": a, "concept": infer_concept(f"{q} {a}"), "source": source, "metadata": {"imported_from_transcript": True}})
+            pending_question = ""
+        elif pending_question:
+            turns.append({"question": pending_question, "answer": line, "concept": infer_concept(f"{pending_question} {line}"), "source": "patient", "metadata": {"imported_from_transcript": True}})
+            pending_question = ""
+        elif line.endswith("?"):
+            pending_question = line
+        else:
+            turns.append({"question": "Patient statement", "answer": line, "concept": infer_concept(line), "source": "patient", "metadata": {"imported_from_transcript": True}})
+
+    return [turn for turn in turns if (turn.get("question") or turn.get("answer")) and turn.get("answer")]
 
 CATEGORY_GROUPS = {
     "Distortion Detection": [
@@ -948,7 +1037,7 @@ def _build_final_recommendations(
     top_guardrails = sorted(bsg_report.findings, key=lambda x: -x.severity)[:4]
     human_boundary = _build_human_factor_boundary(case, jre_report, bsg_report)
 
-    critical_evidence = [
+    jre_evidence = [
         {
             "signal": _display_concept(f.concept),
             "why": f.reason,
@@ -956,7 +1045,8 @@ def _build_final_recommendations(
             "authority": _authority_for_jre_finding(f)["authority"],
         }
         for f in top_findings
-    ] + [
+    ]
+    guardrail_evidence = [
         {
             "signal": f.rule_id.replace("_", " ").title(),
             "why": f.reason,
@@ -965,6 +1055,7 @@ def _build_final_recommendations(
         }
         for f in top_guardrails
     ]
+    critical_evidence = guardrail_evidence + jre_evidence
 
     do_not_infer = []
     for f in jre_report.findings:
@@ -983,11 +1074,17 @@ def _build_final_recommendations(
             "Do not reassure, close, or delay based on patient minimization or cost/work pressure.",
             "Ask only escalation-support questions needed to keep the patient engaged and safe.",
         ]
-        patient_message = (
-            "I cannot safely tell you this can wait. The pattern you described can be time-sensitive, "
-            "especially because it happens with activity and improves with rest. Because cost and work are real barriers, "
-            "I want to help you find the safest urgent option now rather than delay."
-        )
+        if case.patient_context.domain == "chest_discomfort":
+            patient_message = (
+                "I cannot safely tell you this can wait. The pattern you described can be time-sensitive, "
+                "especially because it happens with activity and improves with rest. Because cost and work are real barriers, "
+                "I want to help you find the safest urgent option now rather than delay."
+            )
+        else:
+            patient_message = (
+                "I cannot safely tell you this can wait. Some details you described can be time-sensitive and need urgent review. "
+                "I want to help you get the safest urgent option now rather than delay or minimize it."
+            )
     elif routed:
         immediate_actions = [
             "Hold autonomous completion until the listed evidence gap is resolved.",
@@ -1771,6 +1868,25 @@ def get_experience():
     }
 
 
+@app.post("/demo/parse-transcript")
+def parse_transcript(req: TranscriptParseRequest):
+    """Parse pasted encounter text into editable statements with governed concept inference."""
+    statements = _parse_transcript_text(req.transcript)
+    concepts = sorted({s.get("concept") or "unknown" for s in statements})
+    sources = sorted({s.get("source") or "patient" for s in statements})
+    return {
+        "statements": statements,
+        "count": len(statements),
+        "concepts": concepts,
+        "sources": sources,
+        "llm_available": bool(_llm is not None and _llm.available),
+        "classification_note": (
+            "Transcript imported as editable turns. Source and concept labels are used by the governed analysis; "
+            "the async LLM extractor receives these same turns after analysis."
+        ),
+    }
+
+
 @app.post("/demo/llm-analyze")
 def llm_analyze(req: AnalyzeRequest):
     """Run LLM analysis on a case. Called separately from /demo/analyze for async UX."""
@@ -2015,6 +2131,69 @@ body {
   border-bottom: 1px solid var(--border);
 }
 .category-header:first-of-type { margin-top: 8px; }
+
+.transcript-intake-card {
+  background: linear-gradient(135deg, #ffffff 0%, #eefcf9 58%, #fff8e8 100%);
+  border: 1px solid rgba(15,159,154,0.26);
+  border-radius: var(--radius);
+  padding: 18px;
+  margin: 18px 0;
+  box-shadow: 0 12px 30px rgba(31,97,114,0.10);
+}
+.transcript-intake-card h3 { font-size: 16px; margin-bottom: 4px; }
+.transcript-intake-card p { color: var(--text-dim); font-size: 13px; margin-bottom: 12px; }
+.transcript-intake-grid {
+  display: grid;
+  grid-template-columns: 1fr 96px 160px 1fr;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+@media (max-width: 900px) { .transcript-intake-grid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 560px) { .transcript-intake-grid { grid-template-columns: 1fr; } }
+.transcript-intake-card label {
+  display: block;
+  color: var(--text-dim);
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.transcript-intake-card input,
+.transcript-intake-card select,
+.transcript-intake-card textarea,
+.builder-form textarea {
+  background: #f8fcfd;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 9px 11px;
+  color: var(--text);
+  font-size: 14px;
+  width: 100%;
+}
+.transcript-intake-card textarea,
+.builder-form textarea {
+  min-height: 120px;
+  resize: vertical;
+  font-family: 'SF Mono', Menlo, monospace;
+  line-height: 1.45;
+}
+.transcript-proof {
+  background: rgba(255,255,255,0.72);
+  border: 1px solid rgba(15,159,154,0.18);
+  border-radius: 8px;
+  padding: 9px 10px;
+  color: var(--text-dim);
+  font-size: 12px;
+  margin-top: 10px;
+}
+.field-purpose-note {
+  background: #f8fcfd;
+  border: 1px solid rgba(207,226,234,0.8);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: var(--text-dim);
+  font-size: 12px;
+  margin: 10px 0 12px;
+}
 
 /* Custom case button */
 .custom-case-btn {
@@ -2729,6 +2908,25 @@ textarea.suggestion-edit {
   text-transform: uppercase;
 }
 .recommendation-card ul { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.55; }
+.clinician-action-layout { display: grid; grid-template-columns: minmax(280px, .9fr) minmax(320px, 1.1fr); gap: 12px; }
+@media (max-width: 860px) { .clinician-action-layout { grid-template-columns: 1fr; } }
+.handoff-text { font-size: 14px; line-height: 1.55; }
+.compact-boundary-list { display: grid; gap: 8px; }
+.compact-boundary-list div {
+  border-left: 3px solid var(--accent);
+  background: #f8fcfd;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 13px;
+}
+.medical-director-note {
+  background: #f8fcfd;
+  border: 1px solid rgba(207,226,234,0.8);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: var(--text-dim);
+}
 .evidence-row {
   border-left: 3px solid var(--accent);
   background: #f8fcfd;
@@ -2905,6 +3103,65 @@ textarea.suggestion-edit {
       <h2 style="font-size:20px;font-weight:600;">Select a Clinical Case</h2>
       <p style="font-size:13px;color:var(--text-dim);">Each case demonstrates a different safety detection capability.</p>
     </div>
+  </div>
+  <div class="transcript-intake-card">
+    <h3>Start With A Real Transcript</h3>
+    <p>Paste raw encounter dialogue. The app parses speaker turns, classifies concepts where it can, keeps every row editable, and then sends the same turns through the governed analysis and async LLM extractor.</p>
+    <div class="transcript-intake-grid">
+      <div>
+        <label>Chief Concern</label>
+        <input id="quick-concern" value="custom transcript encounter" placeholder="e.g., cough and fever">
+      </div>
+      <div>
+        <label>Age</label>
+        <input id="quick-age" type="number" value="50" min="0" max="150">
+      </div>
+      <div>
+        <label>Modality</label>
+        <select id="quick-modality"><option value="text">Text</option><option value="phone">Phone</option><option value="video">Video</option><option value="in_person">In Person</option></select>
+      </div>
+      <div>
+        <label>Known Conditions</label>
+        <input id="quick-conditions" placeholder="comma-separated">
+      </div>
+    </div>
+    <div class="transcript-intake-grid" style="grid-template-columns: 1fr 1fr;">
+      <div>
+        <label>Domain</label>
+        <select id="quick-domain">
+          <option value="chest_discomfort">Chest Discomfort</option>
+          <option value="dyspnea_respiratory">Dyspnea/Respiratory</option>
+          <option value="uri_sinus_throat">URI / Sinus / Throat</option>
+          <option value="gi_symptoms">GI Symptoms</option>
+          <option value="gerd_dyspepsia">GERD / Dyspepsia</option>
+          <option value="mental_health">Mental Health</option>
+          <option value="adhd_behavioral_med">ADHD / Behavioral Medication</option>
+          <option value="asthma_allergy">Asthma / Allergy</option>
+          <option value="diabetes_hyperglycemia">Diabetes / Hyperglycemia</option>
+          <option value="eye_ear">Eye / Ear</option>
+          <option value="followup_lab_review">Follow-up / Lab Review</option>
+          <option value="general_med_management">General Medication Management</option>
+          <option value="headache_migraine">Headache/Migraine</option>
+          <option value="med_refill_hypertension">Med Refill/Hypertension</option>
+          <option value="musculoskeletal_pain">Musculoskeletal Pain</option>
+          <option value="obesity_metabolic">Obesity / Metabolic Care</option>
+          <option value="uti_symptoms">UTI Symptoms</option>
+          <option value="routine_dermatology">Routine Dermatology</option>
+          <option value="rash">Rash</option>
+          <option value="skin_infection">Skin Infection</option>
+          <option value="vaginal_sti">Vaginal / STI</option>
+        </select>
+      </div>
+      <div>
+        <label>Transcript</label>
+        <textarea id="quick-transcript" placeholder="Patient: Cough and fever.&#10;Clinician: How high is the fever?&#10;Patient: Around 101.&#10;Clinician: Any shortness of breath?&#10;Patient: A little when I walk."></textarea>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="submitTranscriptCardCase()">Parse Transcript Encounter</button>
+      <button class="btn btn-secondary" onclick="openCustomBuilder()">Open Detailed Builder</button>
+    </div>
+    <div id="quick-transcript-proof" class="transcript-proof">Source controls reliability weighting and conflict detection. Concept controls which template slot, rule family, missing-data check, and next-question logic sees the statement. Blank concepts are inferred and remain editable.</div>
   </div>
   <div id="case-grid-container"></div>
 </div>
@@ -3089,6 +3346,17 @@ textarea.suggestion-edit {
     </div>
     <div>
       <label>Statements</label>
+      <div class="transcript-intake-card" style="box-shadow:none;margin:0 0 12px;padding:14px;">
+        <h3 style="font-size:14px;">Transcript Import</h3>
+        <p>Paste encounter text here to auto-create editable statement rows. The imported source and concept fields are then used by the analysis engine.</p>
+        <textarea id="builder-transcript" placeholder="Clinician: What is worrying you most?&#10;Patient: I am embarrassed and worried this could be cancer.&#10;Clinician: Any bleeding?&#10;Patient: I do not want to answer that here."></textarea>
+        <div class="btn-row" style="margin-top:10px;">
+          <button class="btn btn-secondary btn-sm" onclick="parseBuilderTranscript(false)">Append Transcript Rows</button>
+          <button class="btn btn-primary btn-sm" onclick="parseBuilderTranscript(true)">Replace Rows From Transcript</button>
+        </div>
+        <div id="builder-parse-proof" class="transcript-proof">Transcript rows remain editable before loading the encounter.</div>
+      </div>
+      <div class="field-purpose-note"><strong>Why Source and Concept matter:</strong> Source changes reliability scoring and source-conflict detection. Concept maps the statement into the expert-system slot, missing-data rule, contradiction rule, VAMS/experience lookup, and next-question generator. Leave Concept blank when you want governed inference.</div>
       <div id="builder-stmts">
         <div class="builder-stmt" data-idx="0">
           <span class="remove-stmt" onclick="removeBuilderStmt(this)">remove</span>
@@ -3098,6 +3366,8 @@ textarea.suggestion-edit {
           <input class="stmt-a" placeholder="e.g., It feels like heartburn">
           <label>Source</label>
           <select class="stmt-src"><option value="patient">patient</option><option value="caregiver">caregiver</option><option value="device">device</option><option value="chart">chart</option><option value="clinician">clinician</option></select>
+          <label>Concept</label>
+          <input class="stmt-concept" placeholder="optional; inferred if blank">
         </div>
       </div>
       <button class="btn btn-secondary btn-sm" style="margin-top:8px;" onclick="addBuilderStmt()">+ Add Statement</button>
@@ -3141,6 +3411,22 @@ function showToast(msg) {
   t.textContent = msg;
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function resetSessionForNewEncounter() {
+  currentAnalysis = null;
+  feedbackSelections = {};
+  const rec = document.getElementById('recommendations-content');
+  if (rec) rec.innerHTML = '';
+  const analysisSummary = document.getElementById('analysis-summary');
+  if (analysisSummary) analysisSummary.innerHTML = '';
+  const analysisSections = document.getElementById('analysis-sections');
+  if (analysisSections) analysisSections.innerHTML = '';
+  const analysisActions = document.getElementById('analysis-actions');
+  if (analysisActions) analysisActions.style.display = 'none';
+  const paste = document.getElementById('paste-transcript');
+  if (paste) paste.value = '';
+  togglePastePanel(false);
 }
 
 // ---------------------------------------------------------------------------
@@ -3209,8 +3495,7 @@ function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.
 function selectCase(c) {
   try {
     currentCase = c;
-    currentAnalysis = null;
-    feedbackSelections = {};
+    resetSessionForNewEncounter();
     renderEncounter();
     showScreen('encounter');
   } catch(e) {
@@ -3355,6 +3640,16 @@ function speakerForLine(line) {
   return '';
 }
 
+async function parseTranscriptServer(text) {
+  const resp = await fetch(API + '/demo/parse-transcript', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ transcript: text })
+  });
+  if (!resp.ok) throw new Error('transcript parse failed');
+  return await resp.json();
+}
+
 function parseTranscript(text) {
   const lines = String(text || '').split(/\\r?\\n/).map(x => x.trim()).filter(Boolean);
   const turns = [];
@@ -3365,50 +3660,122 @@ function parseTranscript(text) {
     const aa = line.match(/^\\s*(?:A(?:nswer)?|Patient|Pt|Caregiver|Daughter|Son|Mom|Mother|Father|Device|Chart)\\s*[:\\-]\\s*(.*)$/i);
     const speaker = speakerForLine(line);
     if (inlineQa) {
-      turns.push({ question: inlineQa[1].trim(), answer: inlineQa[2].trim(), concept: null, source: 'patient', metadata: {} });
+      turns.push({ question: inlineQa[1].trim(), answer: inlineQa[2].trim(), concept: null, source: 'patient', metadata: { imported_from_transcript: true } });
       pendingQuestion = '';
     } else if (qa && !aa) {
       pendingQuestion = cleanSpeakerLine(line);
     } else if (aa) {
       const source = speaker && speaker !== 'clinician' ? speaker : 'patient';
-      turns.push({ question: pendingQuestion || 'Patient statement', answer: aa[1].trim(), concept: null, source, metadata: {} });
+      turns.push({ question: pendingQuestion || 'Patient statement', answer: aa[1].trim(), concept: null, source, metadata: { imported_from_transcript: true } });
       pendingQuestion = '';
     } else if (speaker === 'clinician') {
       pendingQuestion = cleanSpeakerLine(line);
     } else if (speaker) {
-      turns.push({ question: pendingQuestion || 'Patient statement', answer: cleanSpeakerLine(line), concept: null, source: speaker === 'clinician' ? 'patient' : speaker, metadata: {} });
+      turns.push({ question: pendingQuestion || 'Patient statement', answer: cleanSpeakerLine(line), concept: null, source: speaker === 'clinician' ? 'patient' : speaker, metadata: { imported_from_transcript: true } });
       pendingQuestion = '';
     } else if (pendingQuestion) {
-      turns.push({ question: pendingQuestion, answer: line, concept: null, source: 'patient', metadata: {} });
+      turns.push({ question: pendingQuestion, answer: line, concept: null, source: 'patient', metadata: { imported_from_transcript: true } });
       pendingQuestion = '';
     } else if (line.endsWith('?')) {
       pendingQuestion = line;
     } else {
-      turns.push({ question: 'Patient statement', answer: line, concept: null, source: 'patient', metadata: {} });
+      turns.push({ question: 'Patient statement', answer: line, concept: null, source: 'patient', metadata: { imported_from_transcript: true } });
     }
   }
   if (pendingQuestion) turns.push({ question: pendingQuestion, answer: '', concept: null, source: 'patient', metadata: {} });
   return turns.filter(t => (t.question || t.answer) && t.answer !== '');
 }
 
-function importTranscript(replace) {
+async function importTranscript(replace) {
   const ta = document.getElementById('paste-transcript');
   const text = ta ? ta.value : '';
-  const parsed = parseTranscript(text);
+  let parsed = [];
+  let parseData = null;
+  try {
+    parseData = await parseTranscriptServer(text);
+    parsed = parseData.statements || [];
+  } catch (e) {
+    parsed = parseTranscript(text);
+  }
   if (!parsed.length) {
     showToast('No dialogue turns found in pasted text.');
     return;
   }
   const existing = replace ? [] : collectEncounterStatements();
   currentCase.case_data.statements = existing.concat(parsed);
-  const sources = Array.from(new Set(parsed.map(t => t.source || 'patient'))).join(', ');
+  const sources = (parseData && parseData.sources ? parseData.sources : Array.from(new Set(parsed.map(t => t.source || 'patient')))).join(', ');
+  const concepts = (parseData && parseData.concepts ? parseData.concepts : Array.from(new Set(parsed.map(t => t.concept || 'unknown')))).join(', ');
   const inferred = parsed.filter(t => !t.concept).length;
   currentCase.parse_proof = {
-    summary: parsed.length + ' pasted turn(s) ' + (replace ? 'replaced the encounter' : 'appended to the encounter') + '; sources: ' + sources + '; ' + inferred + ' concept field(s) left blank for governed inference.'
+    summary: parsed.length + ' pasted turn(s) ' + (replace ? 'replaced the encounter' : 'appended to the encounter') + '; sources: ' + sources + '; concepts: ' + concepts + '; ' + inferred + ' concept field(s) left blank for governed inference.'
   };
   renderEncounter();
   togglePastePanel(false);
   showToast((replace ? 'Replaced' : 'Added') + ' ' + parsed.length + ' dialogue turn(s).');
+}
+
+async function submitTranscriptCardCase() {
+  const text = (document.getElementById('quick-transcript') || {}).value || '';
+  if (!text.trim()) {
+    showToast('Paste a transcript first.');
+    return;
+  }
+  let parseData = null;
+  let stmts = [];
+  try {
+    parseData = await parseTranscriptServer(text);
+    stmts = parseData.statements || [];
+  } catch (e) {
+    stmts = parseTranscript(text);
+  }
+  if (!stmts.length) {
+    showToast('No dialogue turns found in transcript.');
+    return;
+  }
+
+  const domain = document.getElementById('quick-domain').value;
+  const age = parseInt(document.getElementById('quick-age').value) || 50;
+  const concern = document.getElementById('quick-concern').value || 'custom transcript encounter';
+  const modality = document.getElementById('quick-modality').value;
+  const conditions = document.getElementById('quick-conditions').value.split(',').map(s => s.trim()).filter(Boolean);
+  const id = 'TRANSCRIPT-' + Date.now();
+  const concepts = parseData && parseData.concepts ? parseData.concepts.join(', ') : Array.from(new Set(stmts.map(s => s.concept || 'unknown'))).join(', ');
+
+  const customCase = {
+    case_id: id,
+    title: 'Transcript Case',
+    scenario: concern,
+    category: 'custom',
+    category_label: 'Custom',
+    domain: domain,
+    age: age,
+    modality: modality,
+    chief_concern: concern,
+    jre_demonstrates: 'Free-text transcript is converted into editable, source-aware observations before safety analysis.',
+    bsg_demonstrates: 'Sentinel and boundary rules run on every imported statement, including untemplated added details.',
+    combined_insight: 'The transcript is not treated as a static demo script; it becomes the active encounter payload.',
+    parse_proof: {
+      summary: stmts.length + ' transcript turn(s) parsed; concepts: ' + concepts + '. External LLM analysis runs after governed analysis.'
+    },
+    case_data: {
+      case_id: id,
+      patient_context: {
+        age: age,
+        chief_concern: concern,
+        domain: domain,
+        literacy_hint: 'unknown',
+        language_barrier: false,
+        has_caregiver: false,
+        modality: modality,
+        known_conditions: conditions,
+      },
+      statements: stmts,
+      ground_truth: {},
+    }
+  };
+  const proof = document.getElementById('quick-transcript-proof');
+  if (proof) proof.textContent = customCase.parse_proof.summary;
+  selectCase(customCase);
 }
 
 function collectEncounterStatements() {
@@ -3556,45 +3923,31 @@ function renderRecommendations(data) {
   h += '<div style="font-size:13px;color:var(--text-dim);">Autonomy: <strong>' + esc(data.autonomy_tier || '') + '</strong> — ' + esc(data.autonomy_description || '') + '</div>';
   h += '</div>';
 
-  h += '<div class="recommendation-grid">';
+  h += '<div class="clinician-action-layout">';
   h += '<div class="recommendation-card"><h3>Immediate Actions</h3><ul>';
   for (const item of data.immediate_actions || []) h += '<li>' + esc(item) + '</li>';
   h += '</ul></div>';
-  h += '<div class="recommendation-card"><h3>Do Not Infer</h3><ul>';
-  for (const item of data.do_not_infer || []) h += '<li>' + esc(item) + '</li>';
-  if (!(data.do_not_infer || []).length) h += '<li>No major unsafe inference boundary identified.</li>';
-  h += '</ul></div>';
+  h += '<div class="recommendation-card"><h3>Clinician Handoff</h3><div class="handoff-text">' + esc(data.clinician_handoff || '') + '</div></div>';
   h += '</div>';
 
-  h += '<div class="recommendation-grid">';
-  h += '<div class="recommendation-card"><h3>Critical Evidence</h3>';
-  for (const ev of data.critical_evidence || []) {
-    h += '<div class="evidence-row"><strong>' + esc(ev.signal) + '</strong> ' + authorityChip(ev.authority) + '<br><span style="color:var(--text-dim)">' + esc(ev.why) + '</span><br><span style="font-size:11px;color:var(--text-dim);">' + esc(ev.rule) + '</span></div>';
-  }
-  h += '</div>';
+  h += '<div class="recommendation-card"><h3>Patient-Facing Message</h3><div class="patient-script">' + esc(data.patient_message || '') + '</div></div>';
+
+  h += '<div class="clinician-action-layout">';
   h += '<div class="recommendation-card"><h3>Next Questions / Routing Support</h3>';
   for (const q of data.next_questions || []) {
     h += '<div class="evidence-row"><strong>' + esc(q.target) + '</strong><br>' + esc(q.question) + '<br><span style="color:var(--text-dim)">' + esc(q.why) + '</span></div>';
   }
+  h += '</div>';
+  h += '<div class="recommendation-card"><h3>Do Not Infer</h3><div class="compact-boundary-list">';
+  const boundaryItems = (data.do_not_infer || []).slice(0, 4);
+  for (const item of boundaryItems) h += '<div>' + esc(item) + '</div>';
+  if (!boundaryItems.length) h += '<div>No major unsafe inference boundary identified.</div>';
   h += '</div></div>';
-
-  h += '<div class="recommendation-card"><h3>Patient-Facing Message</h3><div class="patient-script">' + esc(data.patient_message || '') + '</div></div>';
-  h += '<div class="recommendation-card"><h3>Clinician Handoff</h3><div style="font-size:13px;line-height:1.55;">' + esc(data.clinician_handoff || '') + '</div></div>';
-
-  h += renderHumanFactorsRecommendation(data.human_factors || {});
-
-  h += '<div class="recommendation-grid">';
-  h += '<div class="recommendation-card"><h3>Governance Follow-up</h3><ul>';
-  for (const item of data.governance_actions || []) h += '<li>' + esc(item) + '</li>';
-  h += '</ul></div>';
-  h += '<div class="recommendation-card"><h3>AI Processing Contract</h3><div style="font-size:13px;color:var(--text-dim);margin-bottom:8px;">' + esc((data.ai_processing || {}).role || '') + '</div><ul>';
-  for (const item of ((data.ai_processing || {}).prompt_contract || [])) h += '<li>' + esc(item) + '</li>';
-  h += '</ul><div style="font-size:12px;color:var(--text-dim);margin-top:8px;">' + esc((data.ai_processing || {}).current_authority || '') + '</div></div>';
   h += '</div>';
 
-  h += '<div class="recommendation-card"><h3>Quality Metrics To Capture</h3><ul>';
-  for (const item of data.quality_metrics || []) h += '<li>' + esc(item) + '</li>';
-  h += '</ul></div>';
+  h += '<div class="recommendation-card"><h3>Medical Director / Governance Note</h3>';
+  h += '<div class="medical-director-note">Supporting evidence, provenance, VAMS-style memory recall, human-factor boundary details, and LLM candidate findings are on the Analysis page. This page is intentionally limited to action, handoff, patient language, and the few boundaries that should change clinician behavior now.</div>';
+  h += '</div>';
   h += '</div>';
   return h;
 }
@@ -4278,25 +4631,65 @@ let stmtCounter = 1;
 function openCustomBuilder() {
   // Show builder in screen-cases by swapping content
   document.getElementById('case-grid-container').style.display = 'none';
+  const quickCard = document.querySelector('.transcript-intake-card');
+  if (quickCard) quickCard.style.display = 'none';
   document.getElementById('custom-builder').style.display = 'block';
 }
 
 function cancelCustomBuilder() {
   document.getElementById('case-grid-container').style.display = '';
+  const quickCard = document.querySelector('.transcript-intake-card');
+  if (quickCard) quickCard.style.display = '';
   document.getElementById('custom-builder').style.display = 'none';
 }
 
-function addBuilderStmt() {
+function builderStmtHtml(stmt) {
+  const s = stmt || {};
+  const source = s.source || 'patient';
+  return '<span class="remove-stmt" onclick="removeBuilderStmt(this)">remove</span><label>Question</label><input class="stmt-q" placeholder="Question" value="' + esc(s.question || '') + '"><label>Answer</label><input class="stmt-a" placeholder="Answer" value="' + esc(s.answer || '') + '"><label>Source</label><select class="stmt-src"><option value="patient"' + (source === 'patient' ? ' selected' : '') + '>patient</option><option value="caregiver"' + (source === 'caregiver' ? ' selected' : '') + '>caregiver</option><option value="device"' + (source === 'device' ? ' selected' : '') + '>device</option><option value="chart"' + (source === 'chart' ? ' selected' : '') + '>chart</option><option value="clinician"' + (source === 'clinician' ? ' selected' : '') + '>clinician</option></select><label>Concept</label><input class="stmt-concept" placeholder="optional; inferred if blank" value="' + esc(s.concept || '') + '">';
+}
+
+function addBuilderStmt(stmt) {
   const div = document.createElement('div');
   div.className = 'builder-stmt';
   div.setAttribute('data-idx', stmtCounter++);
-  div.innerHTML = '<span class="remove-stmt" onclick="removeBuilderStmt(this)">remove</span><label>Question</label><input class="stmt-q" placeholder="Question"><label>Answer</label><input class="stmt-a" placeholder="Answer"><label>Source</label><select class="stmt-src"><option value="patient">patient</option><option value="caregiver">caregiver</option><option value="device">device</option><option value="chart">chart</option><option value="clinician">clinician</option></select>';
+  div.innerHTML = builderStmtHtml(stmt || {});
   document.getElementById('builder-stmts').appendChild(div);
 }
 
 function removeBuilderStmt(el) {
   const stmtDiv = el.closest('.builder-stmt');
   if (document.querySelectorAll('.builder-stmt').length > 1) stmtDiv.remove();
+}
+
+async function parseBuilderTranscript(replace) {
+  const ta = document.getElementById('builder-transcript');
+  const text = ta ? ta.value : '';
+  if (!text.trim()) {
+    showToast('Paste transcript text first.');
+    return;
+  }
+  let parseData = null;
+  let stmts = [];
+  try {
+    parseData = await parseTranscriptServer(text);
+    stmts = parseData.statements || [];
+  } catch (e) {
+    stmts = parseTranscript(text);
+  }
+  if (!stmts.length) {
+    showToast('No dialogue turns found in transcript.');
+    return;
+  }
+  const container = document.getElementById('builder-stmts');
+  if (replace) container.innerHTML = '';
+  for (const stmt of stmts) addBuilderStmt(stmt);
+  const proof = document.getElementById('builder-parse-proof');
+  if (proof) {
+    const concepts = parseData && parseData.concepts ? parseData.concepts.join(', ') : Array.from(new Set(stmts.map(s => s.concept || 'unknown'))).join(', ');
+    proof.textContent = stmts.length + ' row(s) imported; concepts: ' + concepts + '. Rows remain editable before analysis.';
+  }
+  showToast((replace ? 'Replaced with' : 'Added') + ' ' + stmts.length + ' transcript row(s).');
 }
 
 function submitCustomCase() {
@@ -4311,13 +4704,16 @@ function submitCustomCase() {
     const q = div.querySelector('.stmt-q').value;
     const a = div.querySelector('.stmt-a').value;
     const src = div.querySelector('.stmt-src').value;
-    if (q && a) stmts.push({ question: q, answer: a, concept: null, source: src, metadata: {} });
+    const conceptEl = div.querySelector('.stmt-concept');
+    const concept = conceptEl && conceptEl.value.trim() ? conceptEl.value.trim() : null;
+    if (q && a) stmts.push({ question: q, answer: a, concept: concept, source: src, metadata: {} });
   });
 
   if (!stmts.length) { showToast('Add at least one statement.'); return; }
 
+  const customId = 'CUSTOM-' + Date.now();
   const customCase = {
-    case_id: 'CUSTOM-' + Date.now(),
+    case_id: customId,
     title: 'Custom Case',
     scenario: concern,
     category: 'custom',
@@ -4330,7 +4726,7 @@ function submitCustomCase() {
     bsg_demonstrates: '',
     combined_insight: '',
     case_data: {
-      case_id: 'CUSTOM-' + Date.now(),
+      case_id: customId,
       patient_context: {
         age: age,
         chief_concern: concern,
