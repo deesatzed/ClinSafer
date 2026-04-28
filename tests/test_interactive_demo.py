@@ -499,7 +499,7 @@ class TestAnalysisEndpoint:
         assert "regex_findings" in llm["data"]
 
     def test_showcase_case_has_boundary_and_autonomy_sections(self):
-        case = _ALL_CASES["CEO-001-stale-ace-refill-ckd-nsaid"]
+        case = _ALL_CASES["showcase-001-stale-ace-refill-ckd-nsaid"]
         resp = client.post("/demo/analyze", json=_make_analyze_payload(case))
         assert resp.status_code == 200
         data = resp.json()

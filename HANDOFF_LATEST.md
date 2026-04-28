@@ -9,7 +9,7 @@
 - [ ] Navigate to `ver2/judgment_readiness_engine/`
 - [ ] Ensure Python >=3.10 with `fastapi`, `uvicorn`, `pydantic`, `pytest` installed
 - [ ] Copy `.env.example` to `.env` and add `OPENROUTER_API_KEY` (optional — runs fully without it)
-- [ ] Run `python -m pytest tests/ -x --tb=short -q` — expect **313 passed**
+- [ ] Run `python -m pytest tests/ -x --tb=short -q` — expect **325 passed**
 - [ ] Run `python interactive_demo.py` — opens at `http://localhost:8001`
 - [ ] Review "Current Blockers" section below
 
@@ -111,14 +111,14 @@ python unified_demo.py
 ```bash
 python -m pytest tests/ -v
 ```
-**Current Status:** 313 passing, 0 failing, 0 skipped
+**Current Status:** 325 passing, 0 failing, 0 skipped
 **Known Failures:** none
 
 ### Verification Suite
 ```bash
 python -m pytest tests/ -x --tb=short -q
 ```
-**Pass Condition:** `313 passed` (zero failures)
+**Pass Condition:** `325 passed` (zero failures)
 
 ---
 

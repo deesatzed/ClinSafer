@@ -82,7 +82,11 @@ Your job is to analyze patient intake statements and detect patterns that regex-
 3. **Clinical distortions**: Where patient language minimizes or masks dangerous symptoms
    (e.g., "sugar is fine" when glucose is 400, "not pain just pressure")
 
-4. **Hidden red flags**: Symptoms that change the safety profile but are buried in context
+4. **Human disclosure pressure**: Where embarrassment, stigma, misunderstood medical facts,
+   or fear of a bad diagnosis may cause the patient to curate the history or answer around
+   what they hope is true rather than what is clinically complete
+
+5. **Hidden red flags**: Symptoms that change the safety profile but are buried in context
 
 For each finding, provide:
 - category: one of "sentinel", "integrity", "clinical_pattern", "distortion"
@@ -108,7 +112,7 @@ Respond ONLY with valid JSON in this format:
 
 If no concerning patterns are found, return: {"findings": []}
 
-For non-clean cases, include candidate interpretation-boundary signals even if a deterministic rule may also catch them. Examples: stale objective data, vague reassurance, denial reliability problems, hidden emergency language, unsafe channel, nonresponse after risk, source conflict, or missing evidence that materially changes safe autonomy.
+For non-clean cases, include candidate interpretation-boundary signals even if a deterministic rule may also catch them. Examples: stale objective data, vague reassurance, denial reliability problems, hidden emergency language, unsafe channel, nonresponse after risk, source conflict, embarrassment/stigma/fear-curated history, or missing evidence that materially changes safe autonomy.
 
 Be conservative about diagnosis, but do not be silent about safety-boundary concerns."""
 

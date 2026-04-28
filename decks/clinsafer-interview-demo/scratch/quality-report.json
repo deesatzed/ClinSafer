@@ -1,6 +1,6 @@
 {
-  "workspace": "/Users/o2satz/Downloads/DontEatCrowe/ver2/judgment_readiness_engine/decks/doctronic-clinsafer-demo",
-  "pptx": "/Users/o2satz/Downloads/DontEatCrowe/ver2/judgment_readiness_engine/decks/doctronic-clinsafer-demo/output/output.pptx",
+  "workspace": "/Users/o2satz/Downloads/DontEatCrowe/ver2/judgment_readiness_engine/decks/clinsafer-interview-demo",
+  "pptx": "/Users/o2satz/Downloads/DontEatCrowe/ver2/judgment_readiness_engine/decks/clinsafer-interview-demo/output/output.pptx",
   "checks": {
     "pptx_package": {
       "slide_count": 16,
@@ -15,7 +15,7 @@
       "failures": []
     },
     "output_hygiene": {
-      "output_dir": "/Users/o2satz/Downloads/DontEatCrowe/ver2/judgment_readiness_engine/decks/doctronic-clinsafer-demo/output",
+      "output_dir": "/Users/o2satz/Downloads/DontEatCrowe/ver2/judgment_readiness_engine/decks/clinsafer-interview-demo/output",
       "unexpected_files": []
     }
   },

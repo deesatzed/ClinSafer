@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Proof harness for the CEO mitigation flow.
+"""Proof harness for the interview mitigation flow.
 
 This intentionally uses the same objects the interactive demo uses rather than
 mocking the response shape. It proves the current app can distinguish a subtle
@@ -69,7 +69,7 @@ def analyze(case_id: str) -> dict[str, Any]:
 
 
 def main() -> None:
-    hero = analyze("CEO-001-stale-ace-refill-ckd-nsaid")
+    hero = analyze("showcase-001-stale-ace-refill-ckd-nsaid")
     clean = analyze("RF-002-good-refill-readyish")
 
     expected_layers = {

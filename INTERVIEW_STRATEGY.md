@@ -1,10 +1,10 @@
-# Doctronic Interview Strategy: Dynamic Interpretation Boundaries
+# Interview Strategy: Dynamic Interpretation Boundaries
 
-Current live-demo companion: `FINAL_DOCTRONIC_INTERVIEW_READINESS.md`.
+Current live-demo companion: `FINAL_INTERVIEW_READINESS.md`.
 
 ## Core Thesis
 
-Doctronic likely already has strong AI-doctor capabilities: clinical reasoning, multi-agent review, patient-facing dialogue, physician escalation, prescription-refill constraints, and safety checks. The showpiece should not imply those are missing.
+Assume the audience already has strong AI-doctor capabilities: clinical reasoning, multi-agent review, patient-facing dialogue, physician escalation, prescription-refill constraints, and safety checks. The showpiece should not imply those are missing.
 
 The stronger contribution is a next-layer safety and autonomy framework:
 
@@ -215,7 +215,7 @@ partial case signature
   -> autonomy cap or clarification plan
 ```
 
-The CEO-facing framing:
+The executive-facing framing:
 
 > The system learns where interpretation failed, not just what diagnosis was present. It remembers the shape of near misses: stale objective data, patient minimization, missing source verification, nonresponse, and workflow pressure.
 
@@ -233,7 +233,7 @@ Best demo language:
 
 Demo update:
 
-- Use the `Mitigation Plan` panel after `Business Impact`.
+- Use the `Mitigation Plan` panel after `Operational Value`.
 - Say that the current app mitigates the case with deterministic controls today.
 - Then show how the same case would feed a stigmergic boundary trace, VAMS near-miss recall, and governed template-promotion queue.
 - Keep the boundary clear: memory suggests; validators and governance decide.
@@ -247,23 +247,23 @@ The system should maintain a dynamic boundary between:
 - what was never asked,
 - what the AI inferred,
 - what contradicts another statement or source,
-- what may be minimized, hidden, or socially unsafe to disclose,
+- what may be minimized, hidden, embarrassing, misunderstood, or socially unsafe to disclose,
 - what cannot be known remotely,
 - and what assumptions must hold before autonomous action is defensible.
 
 Patient language is not the same thing as clinical fact. Silence is not absence. A denial is not always reliable negative evidence. Vague reassurance is not objective data.
 
-At scale, the dangerous cases are often not where the AI lacks medical knowledge. They are where the system over-trusts patient language, over-interprets silence, or fails to notice that the patient is shaping the conversation because they are afraid, embarrassed, cost-constrained, coerced, or trying to reach a desired outcome.
+At scale, the dangerous cases are often not where the AI lacks medical knowledge. They are where the system over-trusts patient language, over-interprets silence, or fails to notice that the patient is shaping the conversation because they are afraid, embarrassed, cost-constrained, coerced, confused by medical facts, frightened by internet search, or trying to reach a desired outcome.
 
 ## Best Interview Framing
 
 Use this positioning:
 
-> I am assuming Doctronic already has strong clinical triage, emergency detection, physician escalation, refill eligibility checks, and adversarial safeguards. I built this to show the next layer I think about: how to make autonomy decisions auditable under uncertainty.
+> I am assuming your team already has strong clinical triage, emergency detection, physician escalation, refill eligibility checks, and adversarial safeguards. I built this to show the next layer I think about: how to make autonomy decisions auditable under uncertainty.
 
 Then sharpen it:
 
-> I am interested in the layer that separates patient statements from clinical facts. A patient denial is not automatically negative evidence. Silence is not absence. Vague reassurance is not objective data. The system needs to maintain dynamic boundaries around what it can safely infer, especially when patients are scared, cost-sensitive, embarrassed, coerced, or trying to get a specific outcome.
+> I am interested in the layer that separates patient statements from clinical facts. A patient denial is not automatically negative evidence. Silence is not absence. Vague reassurance is not objective data. The system needs to maintain dynamic boundaries around what it can safely infer, especially when patients are scared, cost-sensitive, embarrassed, coerced, confused by medical facts, or trying to get a specific outcome.
 
 ## What This Showpiece Demonstrates
 
@@ -317,7 +317,7 @@ Current labels can be reframed:
 - "Learning & Curation" -> **Boundary Calibration / Governance Review**
 - "LLM Second Opinion" -> **Extractor Cross-Check / Candidate Signal Review**
 
-## Subtle Case Themes For A Physician CEO
+## Subtle Case Themes For A Physician executive
 
 Avoid relying on obvious third-year medical student misses as the hero demo. Use those only as explainers.
 
@@ -336,18 +336,22 @@ Lead with mature-system failure modes:
    - Boundary: pathway-completion behavior is not clean negative evidence.
 
 4. **Embarrassment boundary**
-   - Patient minimizes urinary, sexual, pregnancy, substance-use, or mental-health details due to shame.
+   - Patient minimizes urinary, GI, sexual, pregnancy, substance-use, or mental-health details due to shame, stigma, or fear of a bad diagnosis.
    - Boundary: ask nonjudgmental clarifying questions before inferring low risk.
 
-5. **Caregiver-patient conflict**
+5. **Misconstrued medical-facts boundary**
+   - Patient has searched online, latched onto one feared diagnosis, or believes a symptom is irrelevant because it does not match their mental model.
+   - Boundary: normalize the uncertainty and ask concrete symptom questions rather than accepting the patient's self-triage frame.
+
+6. **Caregiver-patient conflict**
    - Patient says they are fine; caregiver says they are confused, weaker, or not acting normally.
    - Boundary: patient self-report cannot dominate source conflict.
 
-6. **Silent alarm**
+7. **Silent alarm**
    - Patient stops responding after the system says a symptom may require urgent care.
    - Boundary: nonresponse after risk is a workflow safety event, not a closed encounter.
 
-7. **False reassurance**
+8. **False reassurance**
    - Patient says "my doctor said this was okay" but current symptoms have changed.
    - Boundary: prior reassurance expires when new red flags or context changes appear.
 
@@ -365,7 +369,7 @@ Lead with mature-system failure modes:
 
 ## Best One-Liner
 
-> Doctronic may already have strong clinical reasoning. What I am bringing is a way to govern the uncertainty around that reasoning: know what was said, know what was inferred, know what was not asked, detect when communication is unreliable, and dynamically cap autonomy when the unknowns become unsafe.
+> Your system may already have strong clinical reasoning. What I am bringing is a way to govern the uncertainty around that reasoning: know what was said, know what was inferred, know what was not asked, detect when communication is unreliable, and dynamically cap autonomy when the unknowns become unsafe.
 
 ## Recommended Demo Direction
 

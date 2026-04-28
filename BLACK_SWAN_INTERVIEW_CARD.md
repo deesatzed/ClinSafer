@@ -2,7 +2,7 @@
 
 ## The idea
 
-Doctronic-style autonomy needs two thresholds:
+Autonomous healthcare needs two thresholds:
 
 1. **Judgment sufficiency** — do we know enough reliable clinical facts to act?
 2. **Assumption sufficiency** — are we still inside the validated conditions where the pathway is allowed to act?

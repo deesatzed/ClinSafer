@@ -1,12 +1,12 @@
-# Doctronic Demo Implementation Plan
+# Demo Implementation Plan
 
-Status: historical implementation plan. For the current live demo talk track and final review, use `FINAL_DOCTRONIC_INTERVIEW_READINESS.md`. The live app now avoids a separate "CEO Mode" label and no longer uses a fixed "Business Impact" section as the primary story.
+Status: historical implementation plan. For the current live demo talk track and final review, use `FINAL_INTERVIEW_READINESS.md`. The live app now avoids a separate "Interview Mode" label and no longer uses a fixed "Operational Value" section as the primary story.
 
 ## Purpose
 
-Enhance the Judgment Readiness Engine demo into a focused interview showpiece for Doctronic's CEO.
+Enhance the Judgment Readiness Engine demo into a focused interview showpiece for an AI healthcare leadership audience.
 
-The goal is not to imply Doctronic lacks obvious clinical safeguards. Assume Doctronic already has strong AI-doctor reasoning, emergency detection, physician escalation, refill checks, and adversarial defenses.
+The goal is not to imply a healthcare AI company lacks obvious clinical safeguards. Assume the audience already has strong AI-doctor reasoning, emergency detection, physician escalation, refill checks, and adversarial defenses.
 
 The goal is to demonstrate what the candidate can bring:
 
@@ -16,13 +16,15 @@ The goal is to demonstrate what the candidate can bring:
 - physician/admin/regulatory realism,
 - and a concrete implementation style that can turn subtle product risk into auditable software.
 
+Add the human component explicitly: patients may not only minimize because of cost or coercion. They may reshape the history because they are embarrassed, afraid of a bad diagnosis, confused by internet-driven medical facts, worried about what enters the chart, or trying to make the answer less alarming. The system should treat those cues as disclosure-pressure signals that require normalizing, privacy-preserving clarification before autonomy is upgraded.
+
 ## Core Interview Thesis
 
 Use this thesis throughout the app and demo:
 
 > The next frontier is not whether the AI can answer. It is whether the AI knows which parts of the encounter are facts, which are inferences, which are unresolved unknowns, and when those unknowns should cap autonomy.
 
-Doctronic may already have strong clinical reasoning. This prototype shows a way to govern uncertainty around that reasoning:
+The audience may already have strong clinical reasoning. This prototype shows a way to govern uncertainty around that reasoning:
 
 - know what was said,
 - know what was inferred,
@@ -51,7 +53,7 @@ The better architecture is not "let the LLM decide." It is:
 5. The expert-system evaluator scores the governed graph.
 6. The autonomy governor applies most-restrictive-wins across clinical readiness, assumption sufficiency, distribution fit, and business/workflow risk.
 
-The pitch to a physician CEO:
+The pitch to a physician executive:
 
 > The current demo proves the safety method. The next layer makes it scalable: AI generates the expert-system graph for the specific case, while governed software validates and executes it.
 
@@ -338,7 +340,7 @@ Falsifiers: current normal BP with number, recent creatinine/eGFR, potassium, ch
 If unresolved: autonomous renewal remains blocked; route to clinician or objective verification.
 ```
 
-This should be shown in CEO mode as "What Would Change The Decision?" because it demonstrates subtle reasoning without claiming diagnosis.
+This should be shown in interview mode as "What Would Change The Decision?" because it demonstrates subtle reasoning without claiming diagnosis.
 
 ### Escalation And Fatigue From `hcc_synth_1`
 
@@ -387,7 +389,7 @@ Case text
   -> AssociativeCaseMemory recall
   -> near-miss analogues + missing nodes + suggested falsifiers
   -> deterministic validators
-  -> visible CEO-mode "Memory Recall" panel
+  -> visible interview-mode "Memory Recall" panel
 ```
 
 Candidate features for the sparse case signature:
@@ -457,7 +459,7 @@ VAMS-style memory must be sandboxed:
 
 1. Add a deterministic `ClinicalBoundaryEncoder` that converts the current JRE/BSG report into a sparse feature set.
 2. Add an `AssociativeCaseMemory` service with synthetic seeded near-miss memories.
-3. Surface a CEO-mode "Memory Recall" panel showing recalled analogue, missing nodes, and proposed falsifiers.
+3. Surface a interview-mode "Memory Recall" panel showing recalled analogue, missing nodes, and proposed falsifiers.
 4. Add `BoundaryTraceField` to retain case-level traces across turns and clarification steps.
 5. Add `BoundarySelfModel` baselines by domain/pathway using online Welford statistics.
 6. Add a `BoundaryInstabilityIndex` that trends uncertainty, contradiction, staleness, source conflict, social risk, and feedback.
@@ -486,9 +488,9 @@ Interview line:
 
 Do not build a competing AI doctor.
 
-Do not claim this is production-ready, clinically validated, or superior to Doctronic's internal systems.
+Do not claim this is production-ready, clinically validated, or superior to internal systems.
 
-Do not lead with obvious cases such as classic stroke, anaphylaxis, active GI bleed, or worst headache. These can remain in the library, but they are not the hero story for a physician CEO.
+Do not lead with obvious cases such as classic stroke, anaphylaxis, active GI bleed, or worst headache. These can remain in the library, but they are not the hero story for a physician executive.
 
 Do not frame the deterministic layer as "regex beats LLM." Frame the LLM as an extractor/interface and the expert system as the governed safety shell.
 
@@ -505,7 +507,7 @@ A less technical viewer should remember:
 
 > The AI should know what it does not know before it acts.
 
-A physician CEO should remember:
+A physician executive should remember:
 
 > This person thinks about subtle scale failure modes, not only textbook red flags.
 
@@ -539,15 +541,15 @@ Tests to update:
 
 ## Workstream 1: App Enhancements To Meet The New Goals
 
-### 1.1 Add CEO Mode
+### 1.1 Add Interview Mode
 
 Add a dedicated demo mode to `interactive_demo.py`.
 
 Implementation target:
 
-- Add a new top navigation item: `CEO Mode`.
-- Add a new screen: `screen-ceo`.
-- Add a new route or frontend state that loads only the curated CEO cases.
+- Add a new top navigation item: `Interview Mode`.
+- Add a new screen: `screen-interview`.
+- Add a new route or frontend state that loads only the curated showpiece cases.
 
 Recommended UI order:
 
@@ -559,14 +561,14 @@ Recommended UI order:
    - statement vs fact vs inference vs unknown.
 4. **Autonomy Cap**
    - what the AI is allowed to do and why.
-5. **Business Impact**
+5. **Operational Value**
    - safe automation, fewer unnecessary physician escalations, better conversion, better trust.
 
 Acceptance criteria:
 
-- User can click `CEO Mode` and see a guided demo path without browsing the full case grid.
+- User can click `Interview Mode` and see a guided demo path without browsing the full case grid.
 - The first screen includes the core thesis in one sentence.
-- The page avoids saying or implying "Doctronic missed this."
+- The page avoids saying or implying "your team missed this."
 
 ### 1.2 Rename Demo Concepts For This Audience
 
@@ -614,7 +616,7 @@ Initial implementation can be heuristic:
 
 Acceptance criteria:
 
-- CEO Mode shows this table before clinical scoring.
+- Interview Mode shows this table before clinical scoring.
 - The table explicitly communicates "unasked is not denied."
 - At least one hero case row shows an unsafe inference that a normal AI intake might make.
 
@@ -650,9 +652,9 @@ Acceptance criteria:
 - The viewer can tell what the AI may do, not only what state it returned.
 - The panel includes both safety and operational/business implications.
 
-### 1.5 Add Business Impact Panel
+### 1.5 Add Operational Value Panel
 
-Add a final CEO-specific panel. This is not for clinicians; it is for the business conversation.
+Add a final interview-specific panel. This is not for clinicians; it is for the business conversation.
 
 Fields:
 
@@ -674,7 +676,7 @@ Example:
 
 Acceptance criteria:
 
-- CEO Mode has a visible business case.
+- Interview Mode has a visible business case.
 - Copy is pragmatic and avoids buzzwords.
 - It connects safety to margin, conversion, retention, or regulatory expansion.
 
@@ -720,7 +722,7 @@ Each case should demonstrate a subtle mature-system failure mode:
 
 Case ID:
 
-- `CEO-001-stale-ace-refill-ckd-nsaid`
+- `showcase-001-stale-ace-refill-ckd-nsaid`
 
 Domain:
 
@@ -766,7 +768,7 @@ Implementation notes:
 
 Case ID:
 
-- `CEO-002-refill-rote-denial-dizziness`
+- `showcase-002-refill-rote-denial-dizziness`
 
 Domain:
 
@@ -792,7 +794,7 @@ Implementation notes:
 
 Case ID:
 
-- `CEO-003-cost-fear-minimizes-alarm`
+- `showcase-003-cost-fear-minimizes-alarm`
 
 Domain:
 
@@ -817,7 +819,7 @@ Implementation notes:
 
 Case ID:
 
-- `CEO-004-bruising-partner-nearby`
+- `showcase-004-bruising-partner-nearby`
 
 Domain:
 
@@ -842,7 +844,7 @@ Implementation notes:
 
 Case ID:
 
-- `CEO-005-caregiver-conflict-fine-but-confused`
+- `showcase-005-caregiver-conflict-fine-but-confused`
 
 Domain:
 
@@ -866,7 +868,7 @@ Implementation notes:
 
 Case ID:
 
-- `CEO-006-nonresponse-after-risk-warning`
+- `showcase-006-nonresponse-after-risk-warning`
 
 Domain:
 
@@ -891,7 +893,7 @@ Implementation notes:
 
 Case ID:
 
-- `CEO-007-unasked-is-not-denied`
+- `showcase-007-unasked-is-not-denied`
 
 Domain:
 
@@ -908,13 +910,13 @@ Expected behavior:
 
 Implementation notes:
 
-- Requires adding required slots or a CEO-specific "critical unasked assumptions" list.
+- Requires adding required slots or an interview-specific "critical unasked assumptions" list.
 
 ### 2.8 Prior Reassurance Expired
 
 Case ID:
 
-- `CEO-008-prior-reassurance-expired`
+- `showcase-008-prior-reassurance-expired`
 
 Domain:
 
@@ -932,6 +934,31 @@ Expected behavior:
 Implementation notes:
 
 - Add pattern for "doctor said it was fine", "already checked", "last month", plus new/worse/sudden.
+
+### 2.9 Embarrassment, Fear, Or Misconstrued Medical Facts Curb The History
+
+Case ID:
+
+- `showcase-009-embarrassment-curbs-history`
+
+Domain:
+
+- `gi_symptoms`, `vaginal_sti`, `uti_symptoms`, `mental_health`, or `general_med_management`
+
+Narrative:
+
+Patient partially reveals a sensitive symptom, then walks it back because they are embarrassed, afraid it is cancer, worried about the chart, or anchored on an internet explanation.
+
+Expected behavior:
+
+- System flags `human_disclosure_pressure`.
+- Autonomy remains capped until a normalizing, privacy-preserving clarification resolves whether the partial denial is reliable.
+- The final recommendation explains the gap without shaming the patient.
+
+Implementation notes:
+
+- Deterministic guardrail catches explicit disclosure-pressure language.
+- LLM candidate extraction should also look for softer equivalents: shame, stigma, fear of bad news, chart anxiety, internet-driven self-triage, or misconceptions about what symptoms matter.
 
 ## Workstream 3: Methodology/Engine Enhancements
 
@@ -960,7 +987,7 @@ Where to implement:
 
 Acceptance criteria:
 
-- Generated for every statement in CEO Mode.
+- Generated for every statement in Interview Mode.
 - Unit tests assert unasked/stale/vague items are unsafe to infer.
 
 ### 3.2 Add Inferred Absence Guard
@@ -970,15 +997,15 @@ Add a rule that prevents summaries from implying absent risk factors when slots 
 Implementation options:
 
 - In `jre/engine.py`, add a finding category `unsafe_inference` or reuse `missing`.
-- In `interactive_demo.py`, add display-only guard for CEO Mode.
+- In `interactive_demo.py`, add display-only guard for Interview Mode.
 
 Recommended for first pass:
 
-- Display-only guard in CEO Mode, then add engine support if time.
+- Display-only guard in Interview Mode, then add engine support if time.
 
 Acceptance criteria:
 
-- For `CEO-007-unasked-is-not-denied`, UI states "Not asked" rather than "denied."
+- For `showcase-007-unasked-is-not-denied`, UI states "Not asked" rather than "denied."
 
 ### 3.3 Add Stale Evidence Detection
 
@@ -992,7 +1019,7 @@ Add or expand patterns for stale data:
 - "old reading"
 - "from before"
 
-Existing BSG has `INTEGRITY_STALE_DATA`. Ensure it fires in refill/lab contexts and is visible in CEO Mode.
+Existing BSG has `INTEGRITY_STALE_DATA`. Ensure it fires in refill/lab contexts and is visible in Interview Mode.
 
 Acceptance criteria:
 
@@ -1027,10 +1054,10 @@ Where:
 
 Acceptance criteria:
 
-- Case `CEO-003` flags this as an interpretation-boundary risk.
+- Case `showcase-003` flags this as an interpretation-boundary risk.
 - Patient-safe summary remains empathetic.
 
-### 3.5 Add Business Impact Heuristics
+### 3.5 Add Operational Value Heuristics
 
 Implement a simple function in `interactive_demo.py`:
 
@@ -1058,25 +1085,25 @@ Outputs:
 
 Acceptance criteria:
 
-- Every CEO Mode case has a business impact panel.
+- Every Interview Mode case has a operational value panel.
 - Copy is concrete and case-specific enough to avoid sounding generic.
 
 ## Workstream 4: UX For The Specific Audience
 
-### 4.1 Replace Case Grid As First Experience In CEO Mode
+### 4.1 Replace Case Grid As First Experience In Interview Mode
 
 The current full grid is useful but too diffuse.
 
-CEO Mode should start with a guided path:
+Interview Mode should start with a guided path:
 
-1. `CEO-001` hero refill case.
+1. `showcase-001` hero refill case.
 2. Optional "compare with clean refill" button.
 3. Optional "show another subtle failure mode" button.
 4. Optional "show full case library" link.
 
 Acceptance criteria:
 
-- The first case is loaded by default in CEO Mode.
+- The first case is loaded by default in Interview Mode.
 - The user does not need to choose from 20+ cases to understand the thesis.
 
 ### 4.2 Make The Hero Case Visually Show The Trap
@@ -1117,7 +1144,7 @@ Blocked:
 
 Acceptance criteria:
 
-- CEO can understand autonomy tier without reading T0/T4 definitions.
+- executive can understand autonomy tier without reading T0/T4 definitions.
 
 ### 4.4 Add Revenue/Churn Language Without Cheapening Safety
 
@@ -1138,13 +1165,13 @@ Avoid:
 
 Acceptance criteria:
 
-- Business panel sounds credible to a physician and a CEO.
+- Business panel sounds credible to a physician and a executive.
 
 ### 4.5 Add Demo Speaker Notes
 
 Create a markdown file:
 
-- `DOCTRONIC_DEMO_SCRIPT.md`
+- `DEMO_SCRIPT.md`
 
 Include:
 
@@ -1152,7 +1179,7 @@ Include:
 - 3-minute demo.
 - 7-minute demo.
 - 15-minute technical deep dive.
-- Anticipated CEO objections and answers.
+- Anticipated executive objections and answers.
 
 Acceptance criteria:
 
@@ -1164,7 +1191,7 @@ The app should make the candidate's value obvious without sounding self-promotio
 
 ### 5.1 Add A "What This Shows About My Work" Panel
 
-In CEO Mode only, include a final optional panel:
+In Interview Mode only, include a final optional panel:
 
 Title:
 
@@ -1201,10 +1228,10 @@ Ideas:
 
 Acceptance criteria:
 
-- The section connects to Doctronic scale.
+- The section connects to healthcare AI scale.
 - It does not claim implementation beyond the prototype.
 
-### 5.3 Add "Questions I Would Ask Doctronic" Section
+### 5.3 Add "Questions I Would Ask" Section
 
 This shows humility and collaboration.
 
@@ -1239,20 +1266,21 @@ Acceptance criteria:
 
 - `python -m pytest tests/test_interactive_demo.py -q` passes.
 
-### 6.2 Add Tests For CEO Cases
+### 6.2 Add Tests For executive Cases
 
-Create tests that assert each CEO case demonstrates its purpose.
+Create tests that assert each showpiece case demonstrates its purpose.
 
 Examples:
 
-- `CEO-001` does not return `ALLOW_WITH_AUDIT`.
-- `CEO-001` contains stale data finding.
-- `CEO-002` flags rote denial or low reliability.
-- `CEO-003` flags care avoidance pressure.
-- `CEO-004` routes clinician for channel safety.
-- `CEO-005` detects source/caregiver conflict.
-- `CEO-006` detects nonresponse workflow failure.
-- `CEO-007` includes missing/unasked critical assumptions.
+- `showcase-001` does not return `ALLOW_WITH_AUDIT`.
+- `showcase-001` contains stale data finding.
+- `showcase-002` flags rote denial or low reliability.
+- `showcase-003` flags care avoidance pressure.
+- `showcase-004` routes clinician for channel safety.
+- `showcase-005` detects source/caregiver conflict.
+- `showcase-006` detects nonresponse workflow failure.
+- `showcase-007` includes missing/unasked critical assumptions.
+- `showcase-009` flags human-disclosure pressure.
 
 Acceptance criteria:
 
@@ -1274,13 +1302,13 @@ http://localhost:8001
 
 Manual checklist:
 
-- CEO Mode opens.
+- Interview Mode opens.
 - Hero case loads without clicking full grid.
 - Encounter text visible.
 - Analysis renders without JS errors.
 - Statement vs Fact table is legible.
 - Autonomy Boundary panel is visible.
-- Business Impact panel is visible.
+- Operational Value panel is visible.
 - Governance copy does not imply uncontrolled learning.
 - Full case library still works.
 
@@ -1296,7 +1324,7 @@ Acceptance criteria:
 
 Use:
 
-> I am assuming Doctronic already has strong clinical reasoning and safety checks. I built this as a showpiece for the next layer I think about at scale: dynamic interpretation boundaries. The core question is not just what the AI thinks is happening. It is what the AI is allowed to infer from messy patient language, what it still does not know, and when those unknowns should cap autonomy.
+> I am assuming your team already has strong clinical reasoning and safety checks. I built this as a showpiece for the next layer I think about at scale: dynamic interpretation boundaries. The core question is not just what the AI thinks is happening. It is what the AI is allowed to infer from messy patient language, what it still does not know, and when those unknowns should cap autonomy.
 
 ### 7.2 Hero Case Walkthrough
 
@@ -1321,7 +1349,7 @@ Show:
 - Known Unknowns.
 - Autonomy Cap.
 - Next Best Question.
-- Business Impact.
+- Operational Value.
 
 ### 7.3 Business Bridge
 
@@ -1333,7 +1361,7 @@ Say:
 
 Say:
 
-> What I wanted to show is how I think. I can build, but I also think across clinical risk, autonomy governance, patient behavior, physician workflow, regulatory evidence, and unit economics. At Doctronic scale, those are all the same product problem.
+> What I wanted to show is how I think. I can build, but I also think across clinical risk, autonomy governance, patient behavior, physician workflow, regulatory evidence, and unit economics. At healthcare AI scale, those are all the same product problem.
 
 ## Workstream 8: Implementation Sequence For A Less-Reasoning Model
 
@@ -1352,9 +1380,9 @@ Done when:
 - Tests pass.
 - UI language matches the new thesis.
 
-### Phase B: Add CEO Cases As Data
+### Phase B: Add executive Cases As Data
 
-1. Add `CEO-001` and `CEO-002` to `jre/synthetic_data.py` or a new CEO case collection.
+1. Add `showcase-001` and `showcase-002` to `jre/synthetic_data.py` or a new showpiece case collection.
 2. Add narratives in `unified_demo.py`.
 3. Add tests that cases appear in `/demo/cases`.
 4. Run `python -m pytest tests/test_unified_demo.py tests/test_interactive_demo.py -q`.
@@ -1386,7 +1414,7 @@ Done when:
 
 - Viewer can tell what the AI is allowed and blocked from doing.
 
-### Phase E: Add Business Impact Section
+### Phase E: Add Operational Value Section
 
 1. Add `_build_business_impact_section()`.
 2. Add renderer.
@@ -1395,13 +1423,13 @@ Done when:
 
 Done when:
 
-- Every CEO case has safety, revenue, churn, physician-efficiency, and regulatory value.
+- Every showpiece case has safety, revenue, churn, physician-efficiency, and regulatory value.
 
-### Phase F: Add CEO Mode Screen
+### Phase F: Add Interview Mode Screen
 
-1. Add `screen-ceo`.
-2. Add `CEO Mode` nav button.
-3. Load `CEO-001` by default.
+1. Add `screen-interview`.
+2. Add `Interview Mode` nav button.
+3. Load `showcase-001` by default.
 4. Add buttons:
    - `Run hero case`
    - `Compare clean refill`
@@ -1414,7 +1442,7 @@ Done when:
 
 ### Phase G: Add Remaining Subtle Cases
 
-Add cases `CEO-003` through `CEO-008`.
+Add cases `showcase-003` through `showcase-009`.
 
 For each:
 
@@ -1425,13 +1453,13 @@ For each:
 
 Done when:
 
-- At least 5 subtle CEO cases exist and pass behavior tests.
+- At least 5 subtle showpiece cases exist and pass behavior tests.
 
 ### Phase H: Create Demo Script
 
-1. Create `DOCTRONIC_DEMO_SCRIPT.md`.
+1. Create `DEMO_SCRIPT.md`.
 2. Include 30-second, 3-minute, 7-minute, and 15-minute scripts.
-3. Include likely CEO objections and concise answers.
+3. Include likely executive objections and concise answers.
 
 Done when:
 
@@ -1448,7 +1476,7 @@ python interactive_demo.py
 
 Manual browser test:
 
-- CEO Mode.
+- Interview Mode.
 - Hero case.
 - Clean refill comparison.
 - One subtle social/workflow case.
@@ -1460,7 +1488,7 @@ Done when:
 - No browser console errors.
 - Demo is coherent in under 5 minutes.
 
-## Likely CEO Objections And Intended Answers
+## Likely executive Objections And Intended Answers
 
 ### "We already do safety checks."
 

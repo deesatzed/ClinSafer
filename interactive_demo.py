@@ -195,7 +195,7 @@ CATEGORY_LABELS = {
     "base_incomplete": "Remote Boundary",
     "base_control": "Happy Path",
     "base_showcase": "Intelligence Showcase",
-    "ceo_boundary": "Showcase — Interpretation Boundaries",
+    "showcase_boundary": "Showcase — Interpretation Boundaries",
     "top_telemedicine": "Top Telemedicine Complaints",
     "bs_integrity": "Black Swan — Integrity",
     "bs_sentinel": "Black Swan — Sentinel",
@@ -207,6 +207,7 @@ CONCEPT_LABELS = {
     "exertional_component": "Exertional pattern",
     "dyspnea": "Functional limitation despite denial",
     "care_context": "Cost/work pressure to delay care",
+    "human_disclosure_pressure": "Embarrassment, stigma, or fear-curated history",
     "vitals": "Current objective vitals",
     "ecg": "Remote ECG boundary",
     "diaphoresis": "Sweating, nausea, or faintness",
@@ -228,7 +229,7 @@ CATEGORY_GROUPS = {
         "base_incomplete",
         "base_control",
         "base_showcase",
-        "ceo_boundary",
+        "showcase_boundary",
         "top_telemedicine",
     ],
     "Black Swan Safety": ["bs_integrity", "bs_sentinel", "bs_envelope"],
@@ -1201,8 +1202,8 @@ def _build_mitigation_plan_section(
         },
         {
             "region": "social_workflow",
-            "signal": "cost fear, coercion, minimization, nonresponse, desired outcome pressure",
-            "status": "hot" if {"workflow_integrity", "communication_envelope", "social_channel_risk"}.intersection(guardrail_categories) else "watch",
+            "signal": "cost fear, coercion, embarrassment, stigma, minimization, nonresponse, desired outcome pressure",
+            "status": "hot" if {"workflow_integrity", "communication_envelope", "social_channel_risk", "human_disclosure_pressure"}.intersection(guardrail_categories) else "watch",
             "decay": "very slow",
         },
         {
@@ -1288,7 +1289,7 @@ def _build_mitigation_plan_section(
             "layer": "Stigmergic boundary trace",
             "purpose": "Keep weak but repeated signals from disappearing between turns.",
             "actions": [
-                "Deposit traces for claims, objective evidence, source conflict, social/workflow risk, temporal staleness, and outcome feedback.",
+                "Deposit traces for claims, objective evidence, source conflict, human-disclosure pressure, temporal staleness, and outcome feedback.",
                 "Let stale evidence fade while unresolved source conflict and nonresponse persist longer.",
                 "Escalate repeated nonresponse after risk instead of closing the encounter as abandoned.",
             ],
@@ -2472,32 +2473,32 @@ textarea.suggestion-edit {
 .empty-state { text-align: center; padding: 24px; color: var(--text-dim); font-size: 14px; }
 
 /* Overview and boundary panels */
-.ceo-hero { background: linear-gradient(135deg, #ffffff 0%, #e9fbf7 56%, #fff5d7 100%); border: 1px solid rgba(172,220,218,0.95); border-radius: var(--radius); padding: 24px; margin-bottom: 18px; box-shadow: var(--shadow); }
-.ceo-claim { font-size: 22px; font-weight: 700; line-height: 1.35; margin-bottom: 10px; }
-.ceo-subclaim { color: var(--text-dim); font-size: 14px; max-width: 860px; }
-.ceo-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
-.ceo-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
-.ceo-panel { background: rgba(255,255,255,0.92); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; box-shadow: 0 10px 24px rgba(31,97,114,0.08); }
-.ceo-panel h3 { font-size: 14px; margin-bottom: 8px; color: var(--accent); }
-.ceo-panel p { font-size: 13px; color: var(--text-dim); }
-.ceo-proof-strip {
+.showcase-hero { background: linear-gradient(135deg, #ffffff 0%, #e9fbf7 56%, #fff5d7 100%); border: 1px solid rgba(172,220,218,0.95); border-radius: var(--radius); padding: 24px; margin-bottom: 18px; box-shadow: var(--shadow); }
+.showcase-claim { font-size: 22px; font-weight: 700; line-height: 1.35; margin-bottom: 10px; }
+.showcase-subclaim { color: var(--text-dim); font-size: 14px; max-width: 860px; }
+.showcase-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+.showcase-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+.showcase-panel { background: rgba(255,255,255,0.92); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; box-shadow: 0 10px 24px rgba(31,97,114,0.08); }
+.showcase-panel h3 { font-size: 14px; margin-bottom: 8px; color: var(--accent); }
+.showcase-panel p { font-size: 13px; color: var(--text-dim); }
+.showcase-proof-strip {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
   gap: 10px;
   margin-top: 18px;
 }
-.ceo-proof {
+.showcase-proof {
   background: rgba(255,255,255,0.82);
   border: 1px solid rgba(15,159,154,0.22);
   border-radius: 8px;
   padding: 12px;
 }
-.ceo-proof strong {
+.showcase-proof strong {
   display: block;
   font-size: 13px;
   margin-bottom: 3px;
 }
-.ceo-proof span {
+.showcase-proof span {
   color: var(--text-dim);
   font-size: 12px;
 }
@@ -2656,38 +2657,43 @@ textarea.suggestion-edit {
 
 <!-- Screen 0: Overview -->
 <div id="screen-overview" class="screen active">
-  <div class="ceo-hero">
-    <div class="ceo-claim">Not an AI doctor. A learning autonomy-boundary layer around an AI doctor.</div>
-    <div class="ceo-subclaim">This demo now shows the mitigation stack explicitly: deterministic controls today, plus stigmergic boundary traces and VAMS near-miss recall as the next governed learning layer.</div>
-    <div class="ceo-proof-strip">
-      <div class="ceo-proof"><strong>Curated rules</strong><span>Enforced: can route, ask, block, or cap autonomy.</span></div>
-      <div class="ceo-proof"><strong>AI candidates</strong><span>Advisory: suggest signals but cannot decide alone.</span></div>
-      <div class="ceo-proof"><strong>Memory / priors</strong><span>Bounded: tune questions and propose falsifiers.</span></div>
-      <div class="ceo-proof"><strong>Ensemble governor</strong><span>Most restrictive state wins every time.</span></div>
+  <div class="showcase-hero">
+    <div class="showcase-claim">Not an AI doctor. A learning autonomy-boundary layer around an AI doctor.</div>
+    <div class="showcase-subclaim">This demo now shows the mitigation stack explicitly: deterministic controls today, plus stigmergic boundary traces and VAMS near-miss recall as the next governed learning layer.</div>
+    <div class="showcase-proof-strip">
+      <div class="showcase-proof"><strong>Curated rules</strong><span>Enforced: can route, ask, block, or cap autonomy.</span></div>
+      <div class="showcase-proof"><strong>AI candidates</strong><span>Advisory: suggest signals but cannot decide alone.</span></div>
+      <div class="showcase-proof"><strong>Memory / priors</strong><span>Bounded: tune questions and propose falsifiers.</span></div>
+      <div class="showcase-proof"><strong>Ensemble governor</strong><span>Most restrictive state wins every time.</span></div>
     </div>
-    <div class="ceo-actions">
-      <button class="btn btn-primary" onclick="selectCaseById('CEO-001-stale-ace-refill-ckd-nsaid')">Run Hero Refill Case</button>
+    <div class="showcase-actions">
+      <button class="btn btn-primary" onclick="selectCaseById('showcase-001-stale-ace-refill-ckd-nsaid')">Run Hero Refill Case</button>
       <button class="btn btn-secondary" onclick="selectCaseById('RF-002-good-refill-readyish')">Compare Clean Refill</button>
-      <button class="btn btn-secondary" onclick="selectCaseById('CEO-003-cost-fear-minimizes-alarm')">Show Cost-Fear Case</button>
+      <button class="btn btn-secondary" onclick="selectCaseById('showcase-003-cost-fear-minimizes-alarm')">Show Cost-Fear Case</button>
+      <button class="btn btn-secondary" onclick="selectCaseById('showcase-009-embarrassment-curbs-history')">Show Embarrassment/Fear Case</button>
       <button class="btn btn-secondary" onclick="showScreen('cases')">Full Case Library</button>
     </div>
   </div>
-  <div class="ceo-grid">
-    <div class="ceo-panel">
+  <div class="showcase-grid">
+    <div class="showcase-panel">
       <h3>What This Adds</h3>
       <p>Separates patient statements from clinical facts, then bounds what the AI is allowed to infer.</p>
     </div>
-    <div class="ceo-panel">
+    <div class="showcase-panel">
       <h3>Why It Matters</h3>
-      <p>At scale, subtle failures often come from silence, stale evidence, denial reliability, or patient-shaped conversations.</p>
+      <p>At scale, subtle failures often come from silence, stale evidence, denial reliability, embarrassment, stigma, fear, or patient-shaped conversations.</p>
     </div>
-    <div class="ceo-panel">
+    <div class="showcase-panel">
       <h3>Operating Leverage</h3>
       <p>One targeted clarification can preserve safe automation, reduce avoidable physician review, and explain paid routing more clearly.</p>
     </div>
-    <div class="ceo-panel">
+    <div class="showcase-panel">
       <h3>New: Mitigation Memory</h3>
       <p>Every analyzed case now shows boundary traces, VAMS-style near-miss recall, falsifiers, governance promotion, and churn/routing mitigation.</p>
+    </div>
+    <div class="showcase-panel">
+      <h3>Human Disclosure Pressure</h3>
+      <p>Patients may curb history because they are embarrassed, fear a bad outcome, misunderstand what matters, or are trying to make the answer less alarming.</p>
     </div>
   </div>
 </div>
@@ -3660,7 +3666,7 @@ function renderMitigationPlan(data) {
   h += '<div class="mitigation-hero-card">';
   h += '<div><span class="state-badge state-' + data.combined_state + '">' + esc(data.combined_state) + '</span></div>';
   h += '<div class="mitigation-title">Stigmergic Boundary Trace</div>';
-  h += '<div class="mitigation-subtitle">This case deposits traces into separate regions so stale data, weak denials, source conflict, social pressure, and outcome feedback do not vanish after one turn.</div>';
+  h += '<div class="mitigation-subtitle">This case deposits traces into separate regions so stale data, weak denials, source conflict, embarrassment/fear pressure, and outcome feedback do not vanish after one turn.</div>';
   h += '<div class="trace-grid">';
   for (const t of data.trace_regions || []) {
     h += '<div class="trace-row"><div class="trace-region">' + esc(t.region) + '</div><div>' + esc(t.signal) + '<br><span style="color:var(--text-dim)">Decay: ' + esc(t.decay) + '</span></div><div class="trace-status">' + esc(t.status) + '</div></div>';

@@ -15,7 +15,7 @@ Open:
 http://localhost:8001
 ```
 
-Open `FINAL_DOCTRONIC_INTERVIEW_READINESS.md` first for the current talk track.
+Open `FINAL_INTERVIEW_READINESS.md` first for the current talk track.
 
 Recommended live path:
 
@@ -75,10 +75,10 @@ This should print `proof: PASS` and show that the hero refill case blocks autono
 
 Main files to show in an interview:
 
-- `FINAL_DOCTRONIC_INTERVIEW_READINESS.md`
+- `FINAL_INTERVIEW_READINESS.md`
 - `INTERVIEW_BRIEF.md`
 - `MITIGATION_PLAN.md`
-- `DOCTRONIC_INTERVIEW_STRATEGY.md`
+- `INTERVIEW_STRATEGY.md`
 - `BLACK_SWAN_GUARDRAILS.md`
 - `interactive_demo.py`
 - `artifacts/provider_dashboard_sample.html`

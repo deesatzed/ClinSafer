@@ -150,6 +150,16 @@ SENTINEL_RULES: List[GuardrailRule] = [
         "T1_INTAKE_ONLY",
     ),
     GuardrailRule(
+        "SENTINEL_DISCLOSURE_DISTORTION",
+        "human_disclosure_pressure",
+        r"\b(embarrass(?:ed|ing)?|ashamed|awkward to say|hard to say|don'?t judge|do not judge|don'?t want to talk about|do not want to talk about|don'?t want this in my chart|do not want this in my chart|afraid (?:it'?s|it is) (?:cancer|something bad)|scared (?:it'?s|it is) (?:cancer|something bad)|i googled|internet says|worried (?:i'?ll|i will) get bad news)\b",
+        0.76,
+        "Patient may be curbing or reshaping the history because of embarrassment, stigma, misunderstood medical facts, or fear of a bad outcome.",
+        "Do not treat the partial history as complete; ask a normalizing, privacy-preserving clarification before upgrading autonomy.",
+        "HOLD_AND_VERIFY",
+        "T1_INTAKE_ONLY",
+    ),
+    GuardrailRule(
         "SENTINEL_PREGNANCY_ABDOMINAL_PAIN",
         "medical_sentinel_off_pathway",
         r"\b(positive pregnancy test|pregnancy test was positive|i am pregnant|i\x27m pregnant|pregnant)\b.{0,120}\b(pelvic|abdominal|belly|shoulder|pain|cramp|bleed|spotting|dizzy|faint)\b|\b(pelvic|abdominal|belly|shoulder|pain|cramp|bleed|spotting|dizzy|faint)\b.{0,120}\b(positive pregnancy test|pregnancy test was positive|i am pregnant|i\x27m pregnant|pregnant)\b",
@@ -590,7 +600,7 @@ class BlackSwanGuardrailEngine:
             status_for(
                 "Patient can express symptoms reliably enough for this modality",
                 [],
-                ["communication_reliability_breach", "social_safety_sentinel"],
+                ["communication_reliability_breach", "social_safety_sentinel", "human_disclosure_pressure"],
                 "No major communication support issue detected.",
             ),
             status_for(

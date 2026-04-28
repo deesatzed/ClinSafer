@@ -130,70 +130,78 @@ CASE_NARRATIVES: Dict[str, CaseNarrative] = {
         combined_insight="This single case exercises 8+ intelligence features simultaneously: contradiction rules, source conflicts, cross-domain gestalt, modality adaptation, severity amplifiers, temporal modifiers, comorbidity boost, and experience memory recording. It demonstrates the system ability to synthesize multiple weak signals into a strong escalation decision.",
         category="base_showcase",
     ),
-    # --- DOCTRONIC CEO CASES: subtle autonomy-boundary failures ---
-    "CEO-001-stale-ace-refill-ckd-nsaid": CaseNarrative(
+    # --- Interview showcase cases: subtle autonomy-boundary failures ---
+    "showcase-001-stale-ace-refill-ckd-nsaid": CaseNarrative(
         title="Routine Refill With Stale Safety Evidence",
         scenario="66-year-old requests lisinopril refill. BP is described as normal, but the reading is months old and no number is available. Patient has CKD, uses ibuprofen most days, and mentions dizziness standing.",
         jre_demonstrates="Separates statement from fact: prior normal BP is not current BP control; 'labs okay last time' is not current renal safety; dizziness is not a clean denial. Objective data and medication-context gaps block judgment readiness.",
         bsg_demonstrates="Stale-data and high-risk comorbidity assumptions weaken the refill pathway. Autonomy should be capped to intake/draft/clarification, not autonomous renewal.",
-        combined_insight="This is the CEO hero case: a mature AI can write a plausible refill plan, but an autonomy-boundary layer refuses to infer current safety from stale, vague, patient-shaped evidence.",
-        category="ceo_boundary",
+        combined_insight="This is the executive hero case: a mature AI can write a plausible refill plan, but an autonomy-boundary layer refuses to infer current safety from stale, vague, patient-shaped evidence.",
+        category="showcase_boundary",
     ),
-    "CEO-002-refill-rote-denial-dizziness": CaseNarrative(
+    "showcase-002-refill-rote-denial-dizziness": CaseNarrative(
         title="Refill-Seeking Rote Denial",
         scenario="54-year-old wants a refill approved quickly before travel. Answers are repetitive denials, then the patient casually mentions seeing spots and dizziness when standing.",
         jre_demonstrates="Shows denial reliability as a measured signal. The system does not treat rote negative answers as strong evidence when the same encounter contains unresolved symptoms and no current BP number.",
         bsg_demonstrates="Copy-paste / metric-gaming style behavior weakens the communication assumption even if the patient is not malicious.",
         combined_insight="The business problem is avoidable friction: ask one targeted question before denying, escalating, or approving a refill on unreliable denials.",
-        category="ceo_boundary",
+        category="showcase_boundary",
     ),
-    "CEO-003-cost-fear-minimizes-alarm": CaseNarrative(
+    "showcase-003-cost-fear-minimizes-alarm": CaseNarrative(
         title="Cost Fear Minimizes Alarm Symptoms",
         scenario="59-year-old with diabetes describes exertional tight indigestion but asks the system to say it can wait because they cannot afford the ER and need to work.",
         jre_demonstrates="Catches exertional cardiac-pattern language despite minimization and care-avoidance pressure.",
         bsg_demonstrates="Care-avoidance pressure prevents the system from downgrading risk simply because the patient resists escalation.",
         combined_insight="At scale, patients shape the conversation for economic and practical reasons. Safety language must preserve trust without letting cost fear lower clinical boundaries.",
-        category="ceo_boundary",
+        category="showcase_boundary",
     ),
-    "CEO-004-bruising-partner-nearby": CaseNarrative(
+    "showcase-004-bruising-partner-nearby": CaseNarrative(
         title="Unsafe Disclosure Channel",
         scenario="32-year-old asks about bruises/rash but says their partner is listening and asks the system not to mention the message.",
         jre_demonstrates="Clinical rash data alone is not the main issue; the encounter evidence is socially unsafe and incomplete.",
         bsg_demonstrates="Coercion/channel safety assumption is breached, routing to a protected human workflow rather than routine automation.",
         combined_insight="This demonstrates that healthcare AI safety includes communication context, not only clinical pattern matching.",
-        category="ceo_boundary",
+        category="showcase_boundary",
     ),
-    "CEO-005-caregiver-conflict-fine-but-confused": CaseNarrative(
+    "showcase-005-caregiver-conflict-fine-but-confused": CaseNarrative(
         title="Patient Says Fine, Caregiver Says Confused",
         scenario="71-year-old diabetic with possible UTI says she is fine. Caregiver reports she is not herself, repeats questions, and had side/flank pain.",
         jre_demonstrates="Shows source and interpretation boundaries: patient self-report should not dominate caregiver concern when mental status and systemic infection risk are possible.",
         bsg_demonstrates="High-risk host factors and uncertainty budget cap autonomy even if the patient minimizes symptoms.",
         combined_insight="This is a subtle telemedicine problem: the patient is seeking help but may be unable to accurately report their own alarm state.",
-        category="ceo_boundary",
+        category="showcase_boundary",
     ),
-    "CEO-006-nonresponse-after-risk-warning": CaseNarrative(
+    "showcase-006-nonresponse-after-risk-warning": CaseNarrative(
         title="Silent Alarm After Risk Warning",
         scenario="57-year-old describes exertional chest pressure and sweating, then stops responding after risk is raised.",
         jre_demonstrates="Clinical signal is concerning, but the important operational fact is that the encounter did not close safely.",
         bsg_demonstrates="Nonresponse after risk disclosure is treated as workflow failure requiring active handoff rather than silent abandonment.",
         combined_insight="This links safety to churn and operations: abandonment after scary language is both a patient-risk event and a recoverable workflow moment.",
-        category="ceo_boundary",
+        category="showcase_boundary",
     ),
-    "CEO-007-unasked-is-not-denied": CaseNarrative(
+    "showcase-007-unasked-is-not-denied": CaseNarrative(
         title="Unasked Is Not Denied",
         scenario="41-year-old has a clean-looking lisinopril refill transcript with current BP and no side effects, but pregnancy status, renal labs, and chart/pharmacy reconciliation were never asked.",
         jre_demonstrates="Shows the difference between documentation completeness and judgment readiness. Missing required safety slots remain missing, not negative.",
         bsg_demonstrates="Autonomy is capped because critical assumptions were not established, even though the available answers look reassuring.",
         combined_insight="A mature AI should not summarize unasked safety variables as absent. This case makes inference boundaries visible.",
-        category="ceo_boundary",
+        category="showcase_boundary",
     ),
-    "CEO-008-prior-reassurance-expired": CaseNarrative(
+    "showcase-008-prior-reassurance-expired": CaseNarrative(
         title="Prior Reassurance Expired",
         scenario="47-year-old says a doctor said prior headaches were okay last month, but this headache is new, sudden, and included transient blurry vision.",
         jre_demonstrates="Temporal change invalidates prior reassurance. New sudden onset and neuro-like symptoms reset the safety boundary.",
         bsg_demonstrates="The pathway should not rely on stale reassurance when the current encounter has a different risk shape.",
         combined_insight="Longitudinal memory helps only when the system knows when old reassurance expires.",
-        category="ceo_boundary",
+        category="showcase_boundary",
+    ),
+    "showcase-009-embarrassment-curbs-history": CaseNarrative(
+        title="Embarrassment Curbs The History",
+        scenario="38-year-old with a GI complaint says the details are embarrassing, asks that it not go in the chart, and partially walks back rectal bleeding after internet-driven cancer fear.",
+        jre_demonstrates="Shows that patient answers are measurements shaped by shame, fear, vocabulary, and misunderstanding, not clean clinical facts.",
+        bsg_demonstrates="Human-disclosure pressure caps autonomy until the system asks normalizing, privacy-preserving clarifications.",
+        combined_insight="The next subtle failure mode is not only cost avoidance. Patients may curate the history because they are embarrassed, scared of bad news, or trying to make the answer less alarming.",
+        category="showcase_boundary",
     ),
     # --- TOP TELEMEDICINE COMPLAINT COVERAGE CASES ---
     "TOP-001-mental-health-self-harm": CaseNarrative("Mental Health Crisis", "Anxiety/depression visit includes self-harm intent and intoxication.", "New mental-health template catches self-harm and substance risk.", "Self-harm sentinel reinforces emergency/crisis workflow.", "High-volume mental health needs crisis gating before routine telemedicine care.", "top_telemedicine"),

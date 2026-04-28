@@ -25,7 +25,7 @@ from jre.synthetic_data import BASE_CASES
 
 
 DEFAULT_CASE_IDS = [
-    "CEO-001-stale-ace-refill-ckd-nsaid",
+    "showcase-001-stale-ace-refill-ckd-nsaid",
     "CP-001-heartburn-pressure",
     "RF-002-good-refill-readyish",
 ]

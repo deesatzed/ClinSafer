@@ -658,13 +658,13 @@ A strong final architecture would be:
 13. Recall near-miss analogues and complete missing pattern.
 14. Generate falsifiers and next-best questions.
 15. Apply most-restrictive autonomy governor.
-16. Render provider/CEO UX:
+16. Render provider/executive UX:
     - statement vs fact
     - known unknowns
     - assumption register
     - autonomy boundary
     - next questions
-    - business impact
+    - operational value
     - mitigation plan
 17. Capture clinician feedback.
 18. Update experience memory, VAMS acceptance, trace priors.

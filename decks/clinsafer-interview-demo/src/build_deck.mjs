@@ -54,7 +54,7 @@ const S = {
   coverSub: { fontSize: 31, color: C.muted },
 };
 
-const sources = "Sources: Doctronic.ai; Doctronic telehealth page; TBPN Digest, Jan 2026.";
+const sources = "Sources: live ClinSafer app, local test suite, and generated demo artifacts.";
 
 const deck = Presentation.create({
   slideSize: { width: W, height: H },
@@ -194,15 +194,15 @@ function addCover() {
           column(
             { width: fill, height: fill, gap: 26, justify: "center" },
             [
-              metric("45", "synthetic cases in the live library", C.tealDeep),
-              metric("324", "passing tests after final polish", C.blue),
+              metric("46", "synthetic cases in the live library", C.tealDeep),
+              metric("325", "passing tests after final polish", C.blue),
               metric("1", "most-restrictive governor decides autonomy", C.coral),
             ],
           ),
           row(
             { width: fill, height: hug, columnSpan: 2, justify: "between", align: "end" },
             [
-              text("Prepared for a Doctronic interview conversation", { width: wrap(900), height: hug, style: S.small }),
+              text("Prepared for an AI healthcare interview conversation", { width: wrap(900), height: hug, style: S.small }),
               text("Live app: clinsafer.fly.dev", { width: hug, height: hug, style: { ...S.small, bold: true, color: C.tealDeep } }),
             ],
           ),
@@ -212,10 +212,10 @@ function addCover() {
     { frame: { left: 0, top: 0, width: W, height: H }, baseUnit: 8 },
   );
   addNotes(slide, `
-Open with humility. Do not imply Doctronic lacks safeguards.
+Open with humility. Do not imply the team lacks safeguards.
 
 Talk track:
-- "I am assuming Doctronic already has strong AI doctor, triage, escalation, and telemedicine infrastructure."
+- "I am assuming your team already has strong AI doctor, triage, escalation, and telemedicine infrastructure."
 - "This is a layer around that: what the AI is allowed to infer, what remains unknown, and when autonomy should be capped."
 - "The point of the deck is to orient the demo; the live app is the proof."
 
@@ -227,7 +227,7 @@ function addContext() {
   const slide = deck.slides.add();
   slideBase(slide, [
     titleStack(
-      "Doctronic scale changes the safety problem",
+      "Healthcare AI scale changes the safety problem",
       "At consumer scale, the hard failures are often not obvious triage misses. They are inference, workflow, and autonomy-boundary failures.",
       "WHY THIS AUDIENCE SHOULD CARE",
     ),
@@ -244,9 +244,9 @@ function addContext() {
         column(
           { width: fill, height: fill, gap: 34, justify: "center" },
           [
-            metric("25M+", "publicly claimed AI consult scale", C.tealDeep),
-            metric("$39", "human doctor visit offer on Doctronic telehealth page", C.green),
-            metric("Utah", "public reporting on prescription-renewal autonomy work", C.violet),
+            metric("Scale", "high-volume patient-facing AI intake", C.tealDeep),
+            metric("Handoff", "low-friction clinician escalation", C.green),
+            metric("Autonomy", "governed permission to act or stop", C.violet),
           ],
         ),
       ],
@@ -254,15 +254,10 @@ function addContext() {
     footer(sources),
   ]);
   addNotes(slide, `
-Do not over-litigate the public numbers. They are only context.
-
 Talk track:
 - "At this scale, even a small autonomy-boundary issue matters operationally."
-- "If a patient minimizes cost or fear, the AI conversation itself becomes part of the risk."
-- "That is where I think this layer fits: not replacing Doctronic's reasoning, but governing its action boundary."
-
-If challenged on sources:
-- Say these are public positioning signals, not assumptions about their internal architecture.
+- "If a patient minimizes because of cost, shame, stigma, fear, or misunderstanding, the AI conversation itself becomes part of the risk."
+- "That is where I think this layer fits: not replacing internal reasoning, but governing its action boundary."
 `);
 }
 
@@ -459,7 +454,7 @@ function addRecommendations() {
       [
         compactPanel("Disposition", "ESCALATE, HOLD, NEED_OBJECTIVE_DATA, ROUTE_CLINICIAN, or narrow audited action.", C.coral),
         compactPanel("Immediate action", "What is allowed now, what is blocked, and what restores readiness.", C.tealDeep),
-        compactPanel("Patient message", "Safety language that addresses cost, fear, work, or delay without downgrading risk.", C.blue),
+        compactPanel("Patient message", "Safety language that addresses cost, fear, embarrassment, stigma, work, or delay without downgrading risk.", C.blue),
         compactPanel("Clinician handoff", "Boundary map and top blockers instead of raw transcript only.", C.violet),
       ],
     ),
@@ -500,7 +495,7 @@ function addRealVsPrototype() {
     ),
     row(
       { width: fill, height: hug, gap: 28, align: "center" },
-      [pill("324 tests passed", C.tealDeep), pill("Live Fly deployment", C.blue), pill("OpenRouter model configurable", C.violet)],
+      [pill("325 tests passed", C.tealDeep), pill("Live Fly deployment", C.blue), pill("OpenRouter model configurable", C.violet)],
     ),
     footer(),
   ]);
@@ -524,7 +519,7 @@ function addShowpieces() {
       { width: fill, height: hug, columns: [fr(1), fr(1)], columnGap: 44, rowGap: 24, alignItems: "start" },
       [
         compactPanel("Cost fear minimizes alarm", "Patient asks the system to approve delay while describing exertional tightness.", C.coral),
-        compactPanel("Routine refill with stale evidence", "Looks operationally routine until safety evidence freshness matters.", C.tealDeep),
+        compactPanel("Embarrassment curbs history", "Patient walks back alarm details because of shame, internet fear, and chart anxiety.", C.amber),
         compactPanel("Caregiver conflict", "Patient says fine; caregiver reports confusion. Source conflict caps autonomy.", C.violet),
         compactPanel("Unasked is not denied", "The system refuses to treat missing safety variables as negative evidence.", C.blue),
       ],
@@ -538,6 +533,9 @@ Why:
 - It is subtle enough for a physician.
 - It is business-relevant without sounding mercenary.
 - It shows patient behavior shaping the conversation.
+
+Second case if they ask about real-world subtlety: embarrassment curbs history.
+- It shows shame, fear of a bad outcome, misconstrued medical facts, and chart anxiety distorting the history before the model reasons over it.
 
 If they care about prescriptions/refills, switch to the stale ACE/CKD/NSAID refill case.
 If they care about caregiver workflows, use caregiver conflict.
@@ -710,7 +708,7 @@ function addClose() {
         ),
       ],
     ),
-    footer("Deck sources: Doctronic.ai, Doctronic telehealth page, TBPN Digest; app verification local and Fly deployment."),
+    footer("Deck sources: app verification, local tests, Fly deployment, and generated demo artifacts."),
   ]);
   addNotes(slide, `
 Close with a collaborative question.

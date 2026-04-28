@@ -97,18 +97,18 @@
   ---
   4. Features That Were Tested
 
-  313 tests across 7 test files are passing; the interactive demo file includes a focused test for the new mitigation section.
+  325 tests across 7 test files are passing; the interactive demo file includes a focused test for the new mitigation section.
 
   - 63 tests on the core JRE engine: chest pressure escalation, breathing denial detection, thunderclap headache escalation, all 13 contradiction rules, all 9 gestalt patterns (including cross-domain), source conflict
   detection, source reliability weighting, 4 modality adaptations, experience memory updates, escalation probes, outcome feedback (all 4 types), LLM failure handling, edge cases (zero statements, extreme ages), utility
   functions.
-  - 24 tests on Black Swan guardrails: all 9 sentinel rules tested individually (stroke, worst headache, anaphylaxis, self-harm, coercion, pregnancy+pain, immunocompromised, bleeding+anticoagulant, active bleeding), all 8
+  - 25 tests on Black Swan guardrails: all 10 sentinel rules tested individually (stroke, worst headache, anaphylaxis, self-harm, coercion, pregnancy+pain, immunocompromised, bleeding+anticoagulant, active bleeding), all 8
   integrity rules tested individually (prompt injection, gaming, wrong patient, device conflict, stale data, non-response, copy-paste, minor consent), LLM graceful degradation (works with and without API key).
   - 115 tests on the unified dashboard: every test case has a narrative, pipeline produces correct results, ground truth matches for all 23 cases, HTML output contains all expected panels, tornado charts work, multi-turn
   simulation works, all showcase features render.
   - 32 tests on the API server: all 9 endpoints respond correctly, input validation rejects bad data (invalid age, unknown modality, fake source types), feedback endpoint processes all 4 assessment types, edge cases (age
   0, age 150, age 151 rejected, very long answers, duplicate concepts), log rotation works, CORS headers present.
-  - 46 tests on the interactive CEO demo: page, cases, analysis sections, mitigation section, feedback, experience, LLM suggestion endpoints, determinism, and edited encounters.
+  - 46 tests on the interactive demo: page, cases, analysis sections, mitigation section, feedback, experience, LLM suggestion endpoints, determinism, and edited encounters.
   - 20 tests on observability: structured logging captures all event types, JSON serialization works, log summary statistics are accurate.
   - 12 tests on sensitivity analysis: threshold variations execute without error, state changes are detected, reports are generated correctly.
 
@@ -133,7 +133,7 @@
 
   The new mitigation architecture intentionally distinguishes implemented features from proposed next layers:
 
-  - Implemented now: deterministic controls, feedback memory, CEO mitigation panel, autonomy caps, business impact panel.
+  - Implemented now: deterministic controls, feedback memory, interview mitigation panel, autonomy caps, final recommendations panel.
   - Planned next: stigmergic boundary trace, VAMS/Hopfield near-miss recall, dynamic template promotion, falsifier planning, and governance dashboard.
 
   These are not presented as already clinically validated or production-ready. They are the roadmap for making the current app smarter while preserving governance.

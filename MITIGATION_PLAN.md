@@ -22,7 +22,7 @@ Already active in `ver2`:
 - MUD map for missing, uncertain, distorted, contradictory, objective-needed, and remote-unknowable facts.
 - CLEAR next-question selection.
 - Black Swan Guardrails for assumption failure and autonomy caps.
-- Statement-vs-fact display in CEO Mode.
+- Statement-vs-fact display in Interview Mode.
 - Autonomy boundary showing allowed and blocked actions.
 - Business impact panel for safety, revenue, churn, physician efficiency, and regulatory value.
 
@@ -95,7 +95,7 @@ Mitigation role:
 
 > Convert “we are worried” into “here is what would change the decision.”
 
-CEO Mode display target:
+Interview Mode display target:
 
 ```text
 What Would Change The Decision?
@@ -180,7 +180,7 @@ Mitigation role:
 
 ## Updated Demo Requirements
 
-The CEO demo should show:
+The interview demo should show:
 
 1. A routine-looking case.
 2. Statement-vs-fact separation.
@@ -205,7 +205,7 @@ python scripts/prove_mitigation_flow.py
 
 This uses the same JRE, BSG, and interactive-demo section builders used by the browser demo. It compares:
 
-- `CEO-001-stale-ace-refill-ckd-nsaid`
+- `showcase-001-stale-ace-refill-ckd-nsaid`
 - `RF-002-good-refill-readyish`
 
 Expected proof behavior:

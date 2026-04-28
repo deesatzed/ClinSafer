@@ -241,6 +241,25 @@ def test_self_harm_sentinel():
     assert report.guardrail_state == "ESCALATE"
 
 
+def test_human_disclosure_pressure_holds_for_clarification():
+    """Embarrassment, stigma, or fear-curated history triggers disclosure pressure guardrail."""
+    case = CaseInput(
+        case_id="test-disclosure-pressure",
+        patient_context=PatientContext(age=38, chief_concern="stomach issue", domain="gi_symptoms", modality="text"),
+        statements=[
+            Statement(
+                question="What is worrying you most?",
+                answer="This is embarrassing and I do not want it in my chart. I googled it and now I am scared it is cancer.",
+                concept="care_context",
+            ),
+        ],
+    )
+    report = _eval_case(case)
+    assert any(f.rule_id == "SENTINEL_DISCLOSURE_DISTORTION" for f in report.findings), \
+        f"Expected SENTINEL_DISCLOSURE_DISTORTION. Got: {[f.rule_id for f in report.findings]}"
+    assert report.guardrail_state in {"HOLD_AND_VERIFY", "ROUTE_CLINICIAN", "ESCALATE"}
+
+
 def test_worst_headache_sentinel():
     """Worst headache language triggers SENTINEL_WORST_HEADACHE."""
     case = CaseInput(

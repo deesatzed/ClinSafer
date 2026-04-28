@@ -4,9 +4,9 @@
 
 “I built a small prototype of what I think is the next layer after AI triage: a **Judgment Readiness Engine**. It does not try to be a better diagnosis predictor. It asks whether the system has enough *reliable* information to act. It explicitly maps missing, uncertain, distorted, contradictory, and remotely unknowable parts of the history, then generates the highest-yield clarification questions. The goal is to turn patient intake from passive data collection into active uncertainty reduction.”
 
-## Why this fits Doctronic-style thinking
+## Why this fits autonomous-healthcare thinking
 
-If Doctronic is building toward autonomous clinical workflows, the gating question becomes:
+If a healthcare AI company is building toward autonomous clinical workflows, the gating question becomes:
 
 > When is it safe for the AI to stop asking and act?
 
