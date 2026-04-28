@@ -97,7 +97,7 @@
   ---
   4. Features That Were Tested
 
-  333 tests across 7 test files are passing; the interactive demo file includes focused tests for mitigation, human-factors recommendations, transcript parsing, free-text bleeding-sentinel regression, back-pain neuro/bladder transcript escalation, and manual red-flag concept reclassification.
+  333 tests across 7 test files are passing; the interactive demo file includes focused tests for mitigation, human-factors recommendations, transcript parsing, input coverage audit, free-text bleeding-sentinel regression, back-pain neuro/bladder transcript escalation, and manual red-flag concept reclassification.
 
   - 63 tests on the core JRE engine: chest pressure escalation, breathing denial detection, thunderclap headache escalation, all 13 contradiction rules, all 9 gestalt patterns (including cross-domain), source conflict
   detection, source reliability weighting, 4 modality adaptations, experience memory updates, escalation probes, outcome feedback (all 4 types), LLM failure handling, edge cases (zero statements, extreme ages), utility
@@ -108,7 +108,7 @@
   simulation works, all showcase features render.
   - 32 tests on the API server: all 9 endpoints respond correctly, input validation rejects bad data (invalid age, unknown modality, fake source types), feedback endpoint processes all 4 assessment types, edge cases (age
   0, age 150, age 151 rejected, very long answers, duplicate concepts), log rotation works, CORS headers present.
-  - 46 tests on the interactive demo: page, cases, analysis sections, mitigation section, feedback, experience, LLM suggestion endpoints, determinism, and edited encounters.
+  - Interactive demo tests cover page flow, cases, analysis sections, input coverage audit, mitigation section, feedback, experience, LLM suggestion endpoints, determinism, and edited encounters.
   - 20 tests on observability: structured logging captures all event types, JSON serialization works, log summary statistics are accurate.
   - 12 tests on sensitivity analysis: threshold variations execute without error, state changes are detected, reports are generated correctly.
 

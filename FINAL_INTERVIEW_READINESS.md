@@ -45,6 +45,7 @@ Current real capabilities:
 - Deterministic Black Swan Guardrail autonomy cap.
 - Human-disclosure pressure detection for embarrassment, stigma, misconstrued medical facts, or fear-curated histories.
 - Human-defense-pattern detection for somatic amplification, reassurance seeking, anxiety-labeling, stoic minimization, and denial.
+- Input Coverage Audit proving each transcript line was used as patient context, mapped to a domain concept, routed to JRE/BSG, sent to the async LLM extractor, or explicitly held for review.
 - Provenance display separating curated rules, AI candidate signals, learned priors, memory hooks, and final governor authority.
 - External LLM candidate-signal extraction through OpenRouter.
 - Final Recommendations page synthesized from actual analysis output, including a Human Factors Boundary that turns defense/disclosure cues into concrete inference limits, next-question strategy, and LLM prompt constraints.

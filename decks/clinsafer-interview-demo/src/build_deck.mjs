@@ -323,7 +323,7 @@ Actual path:
 5. Stop on Statement vs Fact and Provenance & Authority.
 6. Open Final Recommendations.
 
-If he asks for a real encounter: paste it. The app now parses Q/A and speaker-labeled transcripts, leaves turns editable, and infers concepts if blank.
+If he asks for a real encounter: paste it. The app now parses Q/A and speaker-labeled transcripts, leaves turns editable, infers concepts if blank, and shows an Input Coverage Audit proving each line was used, mapped, routed, or held for review.
 `);
 }
 
@@ -347,7 +347,8 @@ function addPasteSlide() {
           [
             compactPanel("Parsed", "Q/A, clinician/patient labels, and alternating turns.", C.tealDeep),
             compactPanel("Editable", "Question, answer, source, and concept can be changed before analysis.", C.blue),
-            compactPanel("Inferred", "Blank concept fields are inferred from question plus answer text.", C.coral),
+            compactPanel("Inferred", "Blank or generic concepts are inferred from question plus answer text.", C.coral),
+            compactPanel("Coverage", "Each line is marked used, context, red flag, hard stop, or review.", C.green),
           ],
         ),
       ],
@@ -361,6 +362,7 @@ Say:
 - "If you give me a small de-identified encounter fragment, I can paste it here."
 - "The UI will show a live input parsed proof line so it is obvious that the encounter changed."
 - "Concepts can be blank. The engine infers the likely slot from the question and answer."
+- "The Input Coverage Audit is the proof that no line quietly disappears."
 
 Caution: ask for de-identified text only. Avoid PHI in an interview.
 `);
@@ -369,7 +371,7 @@ Caution: ask for de-identified text only. Avoid PHI in an interview.
 function addArchitecture() {
   const slide = deck.slides.add();
   const nodes = [
-    ["Input", "Dialogue, source, patient context"],
+    ["Input", "Transcript + coverage audit"],
     ["Extractor", "Normalize observations and confidence"],
     ["JRE", "Missing, uncertain, distorted, contradictory"],
     ["BSG", "Operating envelope and autonomy cap"],

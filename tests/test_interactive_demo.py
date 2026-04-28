@@ -36,6 +36,7 @@ from jre.experience import ExperienceMemory
 client = TestClient(app)
 
 EXPECTED_SECTION_IDS = [
+    "input_coverage",
     "interpretation_boundaries",
     "provenance_authority",
     "observations",
@@ -445,6 +446,16 @@ class TestAnalysisEndpoint:
         }
         assert "SENTINEL_BACK_PAIN_NEURO_BLADDER" in guardrails
         assert "MANUAL_RED_FLAG_REVIEW" in guardrails
+
+        coverage = next(s for s in data["sections"] if s["id"] == "input_coverage")["data"]
+        assert coverage["total_lines"] == 4
+        assert all(row["status"] != "unused" for row in coverage["rows"])
+        neuro_row = next(row for row in coverage["rows"] if row["answer"].startswith("Yes, tingling"))
+        bladder_row = next(row for row in coverage["rows"] if "bladder seems more full" in row["answer"])
+        assert neuro_row["effective_concept"] == "neuro_deficit"
+        assert bladder_row["effective_concept"] == "bowel_bladder"
+        assert "Black Swan Guard" in neuro_row["consumers"]
+        assert "Async LLM extractor payload" in bladder_row["consumers"]
 
     def test_defense_pattern_case_has_actionable_human_factor_recommendations(self):
         case = _ALL_CASES["showcase-010-defense-pattern-distortion"]

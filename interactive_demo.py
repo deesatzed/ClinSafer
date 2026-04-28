@@ -691,6 +691,112 @@ def _build_interpretation_boundaries_section(
     }
 
 
+def _build_input_coverage_section(
+    case: CaseInput,
+    jre_report: ReadinessReport,
+    bsg_report: GuardrailReport,
+) -> Dict[str, Any]:
+    """Show whether every input line was used, routed, or explicitly reviewed."""
+    domain_slots = {slot.name for slot in DOMAIN_TEMPLATES.get(case.patient_context.domain, [])}
+    jre_by_concept: Dict[str, List[Finding]] = {}
+    for finding in jre_report.findings:
+        jre_by_concept.setdefault(finding.concept, []).append(finding)
+
+    rows = []
+    failure_count = 0
+    for idx, stmt in enumerate(case.statements):
+        obs = jre_report.observations[idx] if idx < len(jre_report.observations) else None
+        supplied = stmt.concept or ""
+        inferred = infer_concept(f"{stmt.question} {stmt.answer}") or ""
+        effective = obs.concept if obs else (inferred or supplied or "unknown")
+        context_row = _is_context_statement(
+            {
+                "question": stmt.question,
+                "answer": stmt.answer,
+                "concept": supplied,
+                "source": stmt.source,
+            }
+        )
+        manual_label = supplied.lower() in {"red_flag", "redflag", "alarm", "safety", "urgent", "manual_red_flag"}
+
+        matched_bsg = []
+        answer_fragment = str(stmt.answer or "")[:80]
+        for finding in bsg_report.findings:
+            if answer_fragment and answer_fragment in finding.evidence:
+                matched_bsg.append(finding)
+            elif manual_label and finding.rule_id == "MANUAL_RED_FLAG_REVIEW":
+                matched_bsg.append(finding)
+
+        consumers = ["Observation extractor"]
+        if context_row:
+            consumers.append("Patient-context extractor")
+        if effective in domain_slots:
+            consumers.append("JRE template slot")
+        concept_findings = jre_by_concept.get(effective, [])
+        if concept_findings:
+            consumers.append("JRE rules")
+        if matched_bsg:
+            consumers.append("Black Swan Guard")
+        consumers.append("Async LLM extractor payload")
+
+        status = "used"
+        safety_effect = "Captured and available to governed analysis."
+        if context_row:
+            status = "context"
+            safety_effect = "Extracted as demographics, PMH, medication, or risk context."
+        if effective == "unknown":
+            status = "review"
+            safety_effect = "Captured but unmapped; cannot support reassurance or closure."
+        if manual_label:
+            status = "review"
+            safety_effect = "Manual safety label preserved and forced through review."
+        if concept_findings:
+            strongest = max(concept_findings, key=lambda f: f.severity)
+            safety_effect = f"{strongest.rule_id}: {strongest.reason}"
+            if strongest.category == "red_flag":
+                status = "red_flag"
+        if matched_bsg:
+            strongest_bsg = max(matched_bsg, key=lambda f: f.severity)
+            safety_effect = f"{strongest_bsg.rule_id}: {strongest_bsg.reason}"
+            status = "hard_stop" if strongest_bsg.action in {"ESCALATE", "FAIL_CLOSED"} else "review"
+
+        reclassified = bool(supplied and supplied != effective and effective in domain_slots)
+        if reclassified and "Concept reclassifier" not in consumers:
+            consumers.append("Concept reclassifier")
+
+        if status in {"review"} or effective == "unknown":
+            failure_count += 1
+
+        rows.append(
+            {
+                "line": idx + 1,
+                "question": stmt.question,
+                "answer": stmt.answer,
+                "source": stmt.source,
+                "supplied_concept": supplied or "(blank)",
+                "inferred_concept": inferred or "(none)",
+                "effective_concept": effective,
+                "status": status,
+                "consumers": consumers,
+                "safety_effect": safety_effect,
+                "reclassified": reclassified,
+                "tags": obs.tags if obs else [],
+            }
+        )
+
+    return {
+        "id": "input_coverage",
+        "title": "Input Coverage Audit",
+        "subtitle": "Every transcript line must be used, mapped to context, escalated, or explicitly held for review.",
+        "data": {
+            "rows": rows,
+            "total_lines": len(rows),
+            "review_or_unmapped": failure_count,
+            "invariant": "No input line may silently disappear or support reassurance while unmapped.",
+        },
+    }
+
+
 # ---------------------------------------------------------------------------
 # Section builders for progressive analysis
 # ---------------------------------------------------------------------------
@@ -1857,6 +1963,7 @@ def _build_progressive_sections(
 ) -> List[Dict[str, Any]]:
     """Build progressive analysis sections for the executive demo."""
     return [
+        _build_input_coverage_section(case, jre_report, bsg_report),
         _build_interpretation_boundaries_section(case, jre_report),
         _build_provenance_authority_section(case, jre_report, bsg_report, combined_state),
         _build_observations_section(jre_report),
@@ -3005,6 +3112,68 @@ textarea.suggestion-edit {
   color: var(--text-dim);
   margin-bottom: 8px;
 }
+.coverage-banner {
+  background: linear-gradient(135deg, #ecfdf5 0%, #eff6ff 100%);
+  border: 1px solid rgba(15,159,154,0.24);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+.coverage-warning {
+  background: var(--orange-bg);
+  border: 1px solid rgba(217,119,6,0.25);
+  color: #8a4b05;
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+.coverage-table-wrap { overflow-x: auto; }
+.coverage-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.coverage-table th {
+  text-align: left;
+  padding: 8px;
+  color: var(--text-dim);
+  border-bottom: 1px solid var(--border);
+}
+.coverage-table td {
+  vertical-align: top;
+  padding: 9px 8px;
+  border-bottom: 1px solid rgba(207,226,234,0.75);
+}
+.coverage-table small { color: var(--text-dim); }
+.coverage-chip {
+  display: inline-block;
+  background: #f8fcfd;
+  border: 1px solid rgba(207,226,234,0.85);
+  border-radius: 999px;
+  padding: 2px 7px;
+  margin: 0 4px 4px 0;
+  color: var(--text-dim);
+}
+.coverage-reclass {
+  display: inline-block;
+  background: var(--purple-bg);
+  color: var(--purple);
+  border-radius: 999px;
+  padding: 1px 7px;
+  font-size: 11px;
+  font-weight: 800;
+}
+.coverage-status {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-weight: 800;
+  text-transform: uppercase;
+  font-size: 10px;
+}
+.coverage-used, .coverage-context { background: var(--green-bg); color: var(--green); }
+.coverage-red_flag, .coverage-hard_stop { background: var(--red-bg); color: var(--red); }
+.coverage-review { background: var(--orange-bg); color: var(--orange); }
 .recommendations-shell { display: grid; gap: 14px; }
 .recommendation-hero {
   background: linear-gradient(135deg, #ffffff 0%, #ecfdf5 48%, #fff7ed 100%);
@@ -3978,6 +4147,7 @@ function renderSectionBody(section) {
 
   switch (section.id) {
     case 'interpretation_boundaries': el.innerHTML = renderInterpretationBoundaries(section.data); break;
+    case 'input_coverage': el.innerHTML = renderInputCoverage(section.data); break;
     case 'observations': el.innerHTML = renderObservations(section.data); break;
     case 'mud_map': el.innerHTML = renderMudMap(section.data); break;
     case 'red_flags': el.innerHTML = renderRedFlags(section.data); break;
@@ -4007,6 +4177,28 @@ function renderDemoSummary(data) {
   h += '</div></div>';
   h += '<div style="font-size:13px;color:var(--text-dim);margin-top:10px;">' + esc(data.patient_pattern || '') + '</div>';
   h += '</div>';
+  return h;
+}
+
+function renderInputCoverage(data) {
+  let h = '<div class="coverage-banner"><strong>' + esc(data.total_lines || 0) + ' input line(s) audited.</strong> ' + esc(data.invariant || '') + '</div>';
+  if (data.review_or_unmapped) {
+    h += '<div class="coverage-warning">' + esc(data.review_or_unmapped) + ' line(s) require classification/review before they can support closure.</div>';
+  }
+  h += '<div class="coverage-table-wrap"><table class="coverage-table"><thead><tr><th>Line</th><th>Input</th><th>Concept Path</th><th>Used By</th><th>Safety Effect</th><th>Status</th></tr></thead><tbody>';
+  for (const row of data.rows || []) {
+    h += '<tr>';
+    h += '<td>' + esc(row.line) + '</td>';
+    h += '<td><strong>' + esc(row.question || 'Statement') + '</strong><br><span>' + esc(row.answer || '') + '</span><br><small>source: ' + esc(row.source || '') + '</small></td>';
+    h += '<td><small>supplied: ' + esc(row.supplied_concept || '') + '</small><br><small>inferred: ' + esc(row.inferred_concept || '') + '</small><br><strong>' + esc(row.effective_concept || '') + '</strong>' + (row.reclassified ? '<br><span class="coverage-reclass">reclassified</span>' : '') + '</td>';
+    h += '<td>';
+    for (const c of row.consumers || []) h += '<span class="coverage-chip">' + esc(c) + '</span>';
+    h += '</td>';
+    h += '<td>' + esc(row.safety_effect || '') + '</td>';
+    h += '<td><span class="coverage-status coverage-' + esc(row.status || 'used') + '">' + esc(String(row.status || 'used').replace(/_/g, ' ')) + '</span></td>';
+    h += '</tr>';
+  }
+  h += '</tbody></table></div>';
   return h;
 }
 

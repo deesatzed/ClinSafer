@@ -301,6 +301,7 @@ class JudgmentReadinessEngine:
 
         # Source conflict detection runs on ALL observations before dedup
         findings.extend(self._source_conflict_findings(observations, traces))
+        findings.extend(self._unmapped_observation_findings(observations, traces))
 
         observations_by_concept = self._best_observations_by_concept(observations)
 
@@ -784,6 +785,38 @@ class JudgmentReadinessEngine:
                             "adds contradictory finding (severity=0.70)",
                         ))
 
+        return findings
+
+    def _unmapped_observation_findings(
+        self,
+        observations: Sequence[Observation],
+        traces: List[RuleTrace],
+    ) -> List[Finding]:
+        findings: List[Finding] = []
+        for obs in observations:
+            if obs.concept != "unknown":
+                continue
+            raw = str(obs.raw_value).strip()
+            if not raw:
+                continue
+            findings.append(
+                Finding(
+                    category="uncertain",
+                    concept="unknown",
+                    severity=0.65,
+                    reason="Statement was captured but not mapped to a validated clinical concept; it cannot support reassurance or closure.",
+                    rule_id="UNMAPPED_OBSERVATION_REVIEW",
+                    evidence=raw,
+                )
+            )
+            traces.append(
+                RuleTrace(
+                    "UNMAPPED_OBSERVATION_REVIEW",
+                    "Captured statement lacks validated concept mapping",
+                    raw,
+                    "adds uncertain finding and requires review/classification",
+                )
+            )
         return findings
 
     # ---------------------------------------------------------------------
