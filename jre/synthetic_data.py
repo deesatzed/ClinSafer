@@ -409,6 +409,28 @@ BASE_CASES: List[CaseInput] = [
             "hidden_issue": "Embarrassment, fear of a diagnosis, and misconstrued internet medical facts are shaping the history; partial denials should not be treated as complete GI alarm review.",
         },
     ),
+    CaseInput(
+        case_id="showcase-010-defense-pattern-distortion",
+        patient_context=PatientContext(
+            age=52,
+            chief_concern="stress and chest symptoms",
+            domain="chest_discomfort",
+            literacy_hint="medium",
+            modality="text",
+            known_conditions=["hypertension"],
+        ),
+        statements=[
+            Statement("What do you think is happening?", "I am probably just overreacting. Google says heart attack, but I know it is anxiety.", "care_context"),
+            Statement("Describe the symptom.", "Pressure in my upper chest when I walk fast, but I am not a complainer and I can tough it out.", "symptom_quality"),
+            Statement("Any shortness of breath?", "No. I just slow down and wait because I do not want to look weak.", "dyspnea"),
+            Statement("What are you hoping we can do?", "Please do not make a big deal. I have a lot going on and I will be fine.", "care_context"),
+        ],
+        ground_truth={
+            "requires_escalation": True,
+            "expected_state": "ESCALATE",
+            "hidden_issue": "Defense mechanisms shape both directions of the history: anxiety-labeling and reassurance seeking on one side, stoic minimization and denial on the other. The system must extract concrete exertional pressure, function, timing, and objective data instead of accepting either coping frame.",
+        },
+    ),
     # --- Top telemedicine complaint coverage cases ---
     CaseInput(
         case_id="TOP-001-mental-health-self-harm",

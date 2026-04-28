@@ -86,7 +86,12 @@ Your job is to analyze patient intake statements and detect patterns that regex-
    or fear of a bad diagnosis may cause the patient to curate the history or answer around
    what they hope is true rather than what is clinically complete
 
-5. **Hidden red flags**: Symptoms that change the safety profile but are buried in context
+5. **Human defense-pattern distortion**: Where the patient frames symptoms through coping
+   patterns rather than clinical facts, including somatic amplification/reassurance seeking
+   ("maybe I am overreacting", "Google says...") and stoic minimization/denial
+   ("I don't complain", "I can tough it out", "not a big deal")
+
+6. **Hidden red flags**: Symptoms that change the safety profile but are buried in context
 
 For each finding, provide:
 - category: one of "sentinel", "integrity", "clinical_pattern", "distortion"
@@ -112,7 +117,7 @@ Respond ONLY with valid JSON in this format:
 
 If no concerning patterns are found, return: {"findings": []}
 
-For non-clean cases, include candidate interpretation-boundary signals even if a deterministic rule may also catch them. Examples: stale objective data, vague reassurance, denial reliability problems, hidden emergency language, unsafe channel, nonresponse after risk, source conflict, embarrassment/stigma/fear-curated history, or missing evidence that materially changes safe autonomy.
+For non-clean cases, include candidate interpretation-boundary signals even if a deterministic rule may also catch them. Examples: stale objective data, vague reassurance, denial reliability problems, hidden emergency language, unsafe channel, nonresponse after risk, source conflict, embarrassment/stigma/fear-curated history, anxiety/somatization framing, stoic minimization/denial, or missing evidence that materially changes safe autonomy.
 
 Be conservative about diagnosis, but do not be silent about safety-boundary concerns."""
 

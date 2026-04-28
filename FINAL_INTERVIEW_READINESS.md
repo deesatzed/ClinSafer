@@ -37,13 +37,14 @@ https://clinsafer.fly.dev/
 
 Current real capabilities:
 
-- Built-in case library with 46 cases, including subtle autonomy-boundary cases and top telemedicine complaint coverage.
+- Built-in case library with 47 cases, including subtle autonomy-boundary cases and top telemedicine complaint coverage.
 - Live editable encounter input.
 - Paste-transcript import for real encounter text.
 - Concept inference when pasted or custom dialogue has blank concept fields.
 - Deterministic Judgment Readiness Engine analysis.
 - Deterministic Black Swan Guardrail autonomy cap.
 - Human-disclosure pressure detection for embarrassment, stigma, misconstrued medical facts, or fear-curated histories.
+- Human-defense-pattern detection for somatic amplification, reassurance seeking, anxiety-labeling, stoic minimization, and denial.
 - Provenance display separating curated rules, AI candidate signals, learned priors, memory hooks, and final governor authority.
 - External LLM candidate-signal extraction through OpenRouter.
 - Final Recommendations page synthesized from actual analysis output.
@@ -51,7 +52,7 @@ Current real capabilities:
 
 Verification performed:
 
-- Full local test suite: `325 passed`.
+- Full local test suite: `326 passed`.
 - Live deployed API accepted arbitrary pasted-style encounter data with no pre-tagged concepts.
 - Live deployed API returned `ESCALATE` and `T0_EMERGENCY_OR_HARD_STOP` for the cost-fear exertional chest-discomfort case.
 - Live deployed LLM endpoint returned candidate findings using `qwen/qwen3.6-flash`.

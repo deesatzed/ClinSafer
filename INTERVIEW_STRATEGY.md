@@ -247,13 +247,13 @@ The system should maintain a dynamic boundary between:
 - what was never asked,
 - what the AI inferred,
 - what contradicts another statement or source,
-- what may be minimized, hidden, embarrassing, misunderstood, or socially unsafe to disclose,
+- what may be minimized, hidden, embarrassing, misunderstood, socially unsafe to disclose, or shaped by defense patterns,
 - what cannot be known remotely,
 - and what assumptions must hold before autonomous action is defensible.
 
 Patient language is not the same thing as clinical fact. Silence is not absence. A denial is not always reliable negative evidence. Vague reassurance is not objective data.
 
-At scale, the dangerous cases are often not where the AI lacks medical knowledge. They are where the system over-trusts patient language, over-interprets silence, or fails to notice that the patient is shaping the conversation because they are afraid, embarrassed, cost-constrained, coerced, confused by medical facts, frightened by internet search, or trying to reach a desired outcome.
+At scale, the dangerous cases are often not where the AI lacks medical knowledge. They are where the system over-trusts patient language, over-interprets silence, or fails to notice that the patient is shaping the conversation because they are afraid, embarrassed, cost-constrained, coerced, confused by medical facts, frightened by internet search, seeking reassurance, or trying to look stoic and avoid making a fuss.
 
 ## Best Interview Framing
 
@@ -263,7 +263,7 @@ Use this positioning:
 
 Then sharpen it:
 
-> I am interested in the layer that separates patient statements from clinical facts. A patient denial is not automatically negative evidence. Silence is not absence. Vague reassurance is not objective data. The system needs to maintain dynamic boundaries around what it can safely infer, especially when patients are scared, cost-sensitive, embarrassed, coerced, confused by medical facts, or trying to get a specific outcome.
+> I am interested in the layer that separates patient statements from clinical facts. A patient denial is not automatically negative evidence. Silence is not absence. Vague reassurance is not objective data. The system needs to maintain dynamic boundaries around what it can safely infer, especially when patients are scared, cost-sensitive, embarrassed, coerced, confused by medical facts, seeking reassurance, or trying to appear stoic.
 
 ## What This Showpiece Demonstrates
 
@@ -343,11 +343,15 @@ Lead with mature-system failure modes:
    - Patient has searched online, latched onto one feared diagnosis, or believes a symptom is irrelevant because it does not match their mental model.
    - Boundary: normalize the uncertainty and ask concrete symptom questions rather than accepting the patient's self-triage frame.
 
-6. **Caregiver-patient conflict**
+6. **Defense-pattern boundary**
+   - Patient frames the report through anxiety/somatic amplification ("maybe I am overreacting", "is this cancer?") or stoic minimization ("I do not complain", "I can tough it out", "not a big deal").
+   - Boundary: do not label the patient; treat the transcript as lower-reliability evidence until concrete function, timing, current severity, and objective data are clarified.
+
+7. **Caregiver-patient conflict**
    - Patient says they are fine; caregiver says they are confused, weaker, or not acting normally.
    - Boundary: patient self-report cannot dominate source conflict.
 
-7. **Silent alarm**
+8. **Silent alarm**
    - Patient stops responding after the system says a symptom may require urgent care.
    - Boundary: nonresponse after risk is a workflow safety event, not a closed encounter.
 

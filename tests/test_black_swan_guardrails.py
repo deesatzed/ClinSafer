@@ -260,6 +260,27 @@ def test_human_disclosure_pressure_holds_for_clarification():
     assert report.guardrail_state in {"HOLD_AND_VERIFY", "ROUTE_CLINICIAN", "ESCALATE"}
 
 
+def test_human_defense_pattern_holds_for_clarification():
+    """Anxiety framing plus stoic minimization triggers defense-pattern guardrail."""
+    case = CaseInput(
+        case_id="test-defense-pattern",
+        patient_context=PatientContext(age=52, chief_concern="stress and chest symptoms", domain="chest_discomfort", modality="text"),
+        statements=[
+            Statement(
+                question="What is happening?",
+                answer="It is probably just anxiety and I am overreacting, but I am not a complainer and can tough it out.",
+                concept="care_context",
+            ),
+        ],
+    )
+    report = _eval_case(case)
+    assert any(f.rule_id == "SENTINEL_DEFENSE_PATTERN_DISTORTION" for f in report.findings), \
+        f"Expected SENTINEL_DEFENSE_PATTERN_DISTORTION. Got: {[f.rule_id for f in report.findings]}"
+    assert any(a.name == "Patient can express symptoms reliably enough for this modality" and a.status == "weak" for a in report.assumption_register), \
+        f"Expected weak expression-reliability assumption. Got: {[(a.name, a.status) for a in report.assumption_register]}"
+    assert report.guardrail_state in {"HOLD_AND_VERIFY", "ROUTE_CLINICIAN", "ESCALATE"}
+
+
 def test_worst_headache_sentinel():
     """Worst headache language triggers SENTINEL_WORST_HEADACHE."""
     case = CaseInput(

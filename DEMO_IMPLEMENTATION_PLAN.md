@@ -16,7 +16,7 @@ The goal is to demonstrate what the candidate can bring:
 - physician/admin/regulatory realism,
 - and a concrete implementation style that can turn subtle product risk into auditable software.
 
-Add the human component explicitly: patients may not only minimize because of cost or coercion. They may reshape the history because they are embarrassed, afraid of a bad diagnosis, confused by internet-driven medical facts, worried about what enters the chart, or trying to make the answer less alarming. The system should treat those cues as disclosure-pressure signals that require normalizing, privacy-preserving clarification before autonomy is upgraded.
+Add the human component explicitly: patients may not only minimize because of cost or coercion. They may reshape the history because they are embarrassed, afraid of a bad diagnosis, confused by internet-driven medical facts, worried about what enters the chart, or trying to make the answer less alarming. They may also answer through defense patterns: reassurance-seeking somatic amplification, anxiety-labeling, internet-driven feared diagnoses, stoic minimization, denial, or "I do not complain" identity language. The system should treat those cues as disclosure-pressure or defense-pattern signals that require normalizing, privacy-preserving, concrete clarification before autonomy is upgraded.
 
 ## Core Interview Thesis
 
@@ -285,7 +285,7 @@ Recommended trace regions:
 | `claims` | What the patient explicitly says or denies | 0.96 |
 | `objective` | BP, labs, vitals, chart facts, device readings | 0.92 |
 | `source_conflict` | Patient/chart/device/caregiver disagreement | 0.98 |
-| `social_workflow` | fear, cost, coercion, embarrassment, desired outcome seeking, nonresponse | 0.99 |
+| `social_workflow` | fear, cost, coercion, embarrassment, defense patterns, desired outcome seeking, nonresponse | 0.99 |
 | `temporal_staleness` | aging evidence, missing timestamps, remote unknowability | 0.90 |
 | `outcome_feedback` | clinician correction, near miss, false positive, confirmed risk | 0.995 |
 
@@ -960,6 +960,29 @@ Implementation notes:
 - Deterministic guardrail catches explicit disclosure-pressure language.
 - LLM candidate extraction should also look for softer equivalents: shame, stigma, fear of bad news, chart anxiety, internet-driven self-triage, or misconceptions about what symptoms matter.
 
+### 2.10 Defense Patterns Distort The History In Both Directions
+
+**Demo case**
+
+- `showcase-010-defense-pattern-distortion`
+
+**Point**
+
+Not all human distortion is concealment. Some patients amplify and seek reassurance because they are anxious, frightened, or have anchored on an internet diagnosis. Others minimize because their self-concept is "I am tough", "I do not complain", or "I should not make a fuss." Both patterns can make the transcript clinically unreliable.
+
+**Expected behavior**
+
+- System flags `human_defense_pattern`.
+- The engine separates the coping frame from clinical facts.
+- Autonomy remains capped until the system asks concrete questions about timing, exertional relationship, functional limitation, current symptoms, and objective data.
+- The UI should avoid stigmatizing labels. Use terms like "defense-pattern distortion", "somatic amplification/reassurance seeking", and "stoic minimization/denial".
+
+**What this proves**
+
+- The safety layer does not merely detect bad words or obvious emergencies.
+- It models patient answers as measurements affected by coping style, identity, fear, and context.
+- It can bridge the spectrum from anxious over-interpretation to stoic under-disclosure without pathologizing the patient.
+
 ## Workstream 3: Methodology/Engine Enhancements
 
 ### 3.1 Add Interpretation Boundary Model
@@ -1281,6 +1304,7 @@ Examples:
 - `showcase-006` detects nonresponse workflow failure.
 - `showcase-007` includes missing/unasked critical assumptions.
 - `showcase-009` flags human-disclosure pressure.
+- `showcase-010` flags human-defense-pattern distortion.
 
 Acceptance criteria:
 

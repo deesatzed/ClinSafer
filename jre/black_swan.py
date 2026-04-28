@@ -160,6 +160,16 @@ SENTINEL_RULES: List[GuardrailRule] = [
         "T1_INTAKE_ONLY",
     ),
     GuardrailRule(
+        "SENTINEL_DEFENSE_PATTERN_DISTORTION",
+        "human_defense_pattern",
+        r"\b(just anxiety|probably anxiety|just stress|probably stress|panic attack|in my head|overreacting|hypochondriac|being neurotic|not a complainer|don'?t complain|do not complain|not dramatic|don'?t want to be dramatic|do not want to be dramatic|not weak|look weak|tough it out|walk it off|push through|make a fuss|big deal|nothing serious|everyone gets this|i'?ll be fine|i will be fine|not the type to go to (?:the )?doctor|hate doctors)\b",
+        0.72,
+        "Patient language suggests a defense-pattern distortion: anxiety/somatization framing, reassurance seeking, stoic minimization, or denial may be shaping the symptom report.",
+        "Separate the patient's coping frame from the clinical facts; ask concrete function, timing, and objective-data questions before trusting the denial or reassurance.",
+        "HOLD_AND_VERIFY",
+        "T2_CLINICIAN_DRAFT_ONLY",
+    ),
+    GuardrailRule(
         "SENTINEL_PREGNANCY_ABDOMINAL_PAIN",
         "medical_sentinel_off_pathway",
         r"\b(positive pregnancy test|pregnancy test was positive|i am pregnant|i\x27m pregnant|pregnant)\b.{0,120}\b(pelvic|abdominal|belly|shoulder|pain|cramp|bleed|spotting|dizzy|faint)\b|\b(pelvic|abdominal|belly|shoulder|pain|cramp|bleed|spotting|dizzy|faint)\b.{0,120}\b(positive pregnancy test|pregnancy test was positive|i am pregnant|i\x27m pregnant|pregnant)\b",
@@ -600,7 +610,7 @@ class BlackSwanGuardrailEngine:
             status_for(
                 "Patient can express symptoms reliably enough for this modality",
                 [],
-                ["communication_reliability_breach", "social_safety_sentinel", "human_disclosure_pressure"],
+                ["communication_reliability_breach", "social_safety_sentinel", "human_disclosure_pressure", "human_defense_pattern"],
                 "No major communication support issue detected.",
             ),
             status_for(

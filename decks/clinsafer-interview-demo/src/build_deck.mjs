@@ -195,7 +195,7 @@ function addCover() {
             { width: fill, height: fill, gap: 26, justify: "center" },
             [
               metric("46", "synthetic cases in the live library", C.tealDeep),
-              metric("325", "passing tests after final polish", C.blue),
+              metric("326", "passing tests after final polish", C.blue),
               metric("1", "most-restrictive governor decides autonomy", C.coral),
             ],
           ),
@@ -256,7 +256,7 @@ function addContext() {
   addNotes(slide, `
 Talk track:
 - "At this scale, even a small autonomy-boundary issue matters operationally."
-- "If a patient minimizes because of cost, shame, stigma, fear, or misunderstanding, the AI conversation itself becomes part of the risk."
+- "If a patient minimizes because of cost, shame, fear, misunderstanding, anxiety framing, or stoic denial, the AI conversation itself becomes part of the risk."
 - "That is where I think this layer fits: not replacing internal reasoning, but governing its action boundary."
 `);
 }
@@ -495,7 +495,7 @@ function addRealVsPrototype() {
     ),
     row(
       { width: fill, height: hug, gap: 28, align: "center" },
-      [pill("325 tests passed", C.tealDeep), pill("Live Fly deployment", C.blue), pill("OpenRouter model configurable", C.violet)],
+      [pill("326 tests passed", C.tealDeep), pill("Live Fly deployment", C.blue), pill("OpenRouter model configurable", C.violet)],
     ),
     footer(),
   ]);
@@ -520,8 +520,8 @@ function addShowpieces() {
       [
         compactPanel("Cost fear minimizes alarm", "Patient asks the system to approve delay while describing exertional tightness.", C.coral),
         compactPanel("Embarrassment curbs history", "Patient walks back alarm details because of shame, internet fear, and chart anxiety.", C.amber),
+        compactPanel("Defense pattern distortion", "Patient labels exertional pressure as anxiety while also trying to tough it out.", C.green),
         compactPanel("Caregiver conflict", "Patient says fine; caregiver reports confusion. Source conflict caps autonomy.", C.violet),
-        compactPanel("Unasked is not denied", "The system refuses to treat missing safety variables as negative evidence.", C.blue),
       ],
     ),
     footer(),
@@ -536,6 +536,9 @@ Why:
 
 Second case if they ask about real-world subtlety: embarrassment curbs history.
 - It shows shame, fear of a bad outcome, misconstrued medical facts, and chart anxiety distorting the history before the model reasons over it.
+
+Third case if they ask what "human" means beyond embarrassment: defense pattern distortion.
+- It bridges anxious somatic amplification/reassurance seeking and stoic minimization/denial without using stigmatizing labels.
 
 If they care about prescriptions/refills, switch to the stale ACE/CKD/NSAID refill case.
 If they care about caregiver workflows, use caregiver conflict.

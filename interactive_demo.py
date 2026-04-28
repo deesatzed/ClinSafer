@@ -208,6 +208,7 @@ CONCEPT_LABELS = {
     "dyspnea": "Functional limitation despite denial",
     "care_context": "Cost/work pressure to delay care",
     "human_disclosure_pressure": "Embarrassment, stigma, or fear-curated history",
+    "human_defense_pattern": "Somatic amplification or stoic minimization",
     "vitals": "Current objective vitals",
     "ecg": "Remote ECG boundary",
     "diaphoresis": "Sweating, nausea, or faintness",
@@ -1202,8 +1203,8 @@ def _build_mitigation_plan_section(
         },
         {
             "region": "social_workflow",
-            "signal": "cost fear, coercion, embarrassment, stigma, minimization, nonresponse, desired outcome pressure",
-            "status": "hot" if {"workflow_integrity", "communication_envelope", "social_channel_risk", "human_disclosure_pressure"}.intersection(guardrail_categories) else "watch",
+            "signal": "cost fear, coercion, embarrassment, stigma, defense patterns, minimization, nonresponse, desired outcome pressure",
+            "status": "hot" if {"workflow_integrity", "communication_envelope", "social_channel_risk", "human_disclosure_pressure", "human_defense_pattern"}.intersection(guardrail_categories) else "watch",
             "decay": "very slow",
         },
         {
@@ -2671,6 +2672,7 @@ textarea.suggestion-edit {
       <button class="btn btn-secondary" onclick="selectCaseById('RF-002-good-refill-readyish')">Compare Clean Refill</button>
       <button class="btn btn-secondary" onclick="selectCaseById('showcase-003-cost-fear-minimizes-alarm')">Show Cost-Fear Case</button>
       <button class="btn btn-secondary" onclick="selectCaseById('showcase-009-embarrassment-curbs-history')">Show Embarrassment/Fear Case</button>
+      <button class="btn btn-secondary" onclick="selectCaseById('showcase-010-defense-pattern-distortion')">Show Defense-Pattern Case</button>
       <button class="btn btn-secondary" onclick="showScreen('cases')">Full Case Library</button>
     </div>
   </div>
@@ -2681,7 +2683,7 @@ textarea.suggestion-edit {
     </div>
     <div class="showcase-panel">
       <h3>Why It Matters</h3>
-      <p>At scale, subtle failures often come from silence, stale evidence, denial reliability, embarrassment, stigma, fear, or patient-shaped conversations.</p>
+      <p>At scale, subtle failures often come from silence, stale evidence, denial reliability, defense mechanisms, embarrassment, stigma, fear, or patient-shaped conversations.</p>
     </div>
     <div class="showcase-panel">
       <h3>Operating Leverage</h3>
@@ -2694,6 +2696,10 @@ textarea.suggestion-edit {
     <div class="showcase-panel">
       <h3>Human Disclosure Pressure</h3>
       <p>Patients may curb history because they are embarrassed, fear a bad outcome, misunderstand what matters, or are trying to make the answer less alarming.</p>
+    </div>
+    <div class="showcase-panel">
+      <h3>Defense Pattern Distortion</h3>
+      <p>Answers can swing between anxiety-driven amplification and stoic denial. The system extracts concrete timing, function, and objective facts before trusting either frame.</p>
     </div>
   </div>
 </div>
