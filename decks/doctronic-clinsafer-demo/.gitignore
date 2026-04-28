@@ -1,0 +1,8 @@
+node_modules/
+
+scratch/*
+!scratch/montage.png
+!scratch/quality-report.json
+
+output/*
+!output/output.pptx

@@ -1,0 +1,24 @@
+{
+  "workspace": "/Users/o2satz/Downloads/DontEatCrowe/ver2/judgment_readiness_engine/decks/doctronic-clinsafer-demo",
+  "pptx": "/Users/o2satz/Downloads/DontEatCrowe/ver2/judgment_readiness_engine/decks/doctronic-clinsafer-demo/output/output.pptx",
+  "checks": {
+    "pptx_package": {
+      "slide_count": 16,
+      "media_count": 0,
+      "chart_count": 0,
+      "zero_byte_media": [],
+      "invalid_png_media": [],
+      "placeholder_text": [],
+      "debug_line_colors": [],
+      "slide_numbers": [],
+      "warnings": [],
+      "failures": []
+    },
+    "output_hygiene": {
+      "output_dir": "/Users/o2satz/Downloads/DontEatCrowe/ver2/judgment_readiness_engine/decks/doctronic-clinsafer-demo/output",
+      "unexpected_files": []
+    }
+  },
+  "failures": [],
+  "warnings": []
+}
