@@ -49,6 +49,7 @@ Method:
 
 Primary files:
 
+- `jre/dhse_contract.py`
 - `jre/disposition_handoff.py`
 - `scripts/run_dhse_benchmark.py`
 - `scripts/validate_dhse_export.py`
@@ -64,6 +65,10 @@ Primary files:
 Method:
 
 - Score only information available at ED disposition.
+- Enforce the `DHSE-CSV-v1.1` contract with explicit snapshot, baseline, label,
+  and fixture field roles.
+- Fail closed on non-canonical post-disposition-looking fields in snapshot
+  exports or snapshot JSON metadata.
 - Support notes, dialogue, and hybrid inputs.
 - Label outcomes retrospectively with PTR-B: objective trajectory revision plus
   measurable burden.

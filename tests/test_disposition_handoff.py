@@ -1,4 +1,8 @@
+import csv
+import json
+
 from jre import (
+    DHSE_CONTRACT_VERSION,
     DispositionHandoffSufficiencyEngine,
     DispositionSnapshot,
     PostDischargeTrajectory,
@@ -7,6 +11,7 @@ from jre import (
     load_flat_ehr_csv,
 )
 from scripts.create_dhse_study_packet import create_study_packet
+from scripts.validate_dhse_export import validate_csv
 
 
 def test_notes_snapshot_flags_acuity_mismatch_from_ed_available_data():
@@ -118,6 +123,44 @@ def test_retrospective_report_attaches_label_without_using_it_for_snapshot_state
     assert report.trajectory_label is not None
     assert report.trajectory_label.ptr_b_positive is True
     assert report.dsi == engine.evaluate_snapshot(snapshot).dsi
+
+
+def test_snapshot_score_is_invariant_to_post_discharge_label_mutation():
+    engine = DispositionHandoffSufficiencyEngine()
+    snapshot = DispositionSnapshot(
+        case_id="dhse-label-invariance",
+        input_mode="notes",
+        age=70,
+        chief_concern="weakness",
+        domain="dyspnea_respiratory",
+        disposition_diagnosis="weakness",
+        admission_service="medicine",
+        level_of_care="floor",
+        ed_note="Weakness, admit to floor. No ICU needs documented.",
+        key_pmh=["heart failure"],
+        ed_results={"lactate": 3.0},
+        vital_trend={"spo2": [94, 89], "hr": [116, 128], "rr": [22, 28]},
+    )
+    negative = PostDischargeTrajectory(
+        ed_diagnosis_category="symptom",
+        discharge_diagnosis_category="symptom",
+        los_hours=48,
+        expected_los_hours=48,
+    )
+    positive = PostDischargeTrajectory(
+        ed_diagnosis_category="symptom",
+        discharge_diagnosis_category="sepsis",
+        icu_transfer_within_24h=True,
+        major_therapeutic_pivots=["pressors"],
+    )
+
+    negative_report = engine.evaluate_retrospective(snapshot, negative)
+    positive_report = engine.evaluate_retrospective(snapshot, positive)
+
+    assert negative_report.trajectory_label.ptr_b_positive is False
+    assert positive_report.trajectory_label.ptr_b_positive is True
+    assert negative_report.dsi == positive_report.dsi
+    assert negative_report.state == positive_report.state
 
 
 def test_benchmark_reports_auroc_and_review_capture():
@@ -261,3 +304,81 @@ def test_create_study_packet_writes_reproducible_outputs(tmp_path):
     assert (output_dir / "case_level.csv").exists()
     assert (output_dir / "run_manifest.json").exists()
     assert (output_dir / "METHODS_SNAPSHOT.md").exists()
+
+    manifest = json.loads((output_dir / "run_manifest.json").read_text(encoding="utf-8"))
+    assert manifest["contract_version"] == DHSE_CONTRACT_VERSION
+    assert manifest["validation"]["valid"] is True
+    assert manifest["validation"]["field_roles"]["counts"]["snapshot_scoring_input"] > 0
+    assert manifest["code_provenance"]["git_commit"]
+    assert "jre/dhse_contract.py" in manifest["code_provenance"]["code_sha256"]
+
+
+def test_validator_reports_contract_roles_for_sample_export():
+    result = validate_csv("data/sample_dhse_ehr_export.csv")
+
+    assert result["valid"] is True
+    assert result["contract_version"] == DHSE_CONTRACT_VERSION
+    assert result["field_roles"]["counts"]["snapshot_scoring_input"] > 0
+    assert result["field_roles"]["counts"]["post_disposition_label_only"] > 0
+    assert result["leakage_risk_columns"] == []
+
+
+def test_validator_rejects_noncanonical_leakage_columns(tmp_path):
+    csv_path = tmp_path / "leaky.csv"
+    fields = [
+        "case_id",
+        "age",
+        "chief_concern",
+        "domain",
+        "disposition_diagnosis",
+        "inpatient_note_text",
+    ]
+    with csv_path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fields)
+        writer.writeheader()
+        writer.writerow(
+            {
+                "case_id": "LEAK-001",
+                "age": "71",
+                "chief_concern": "weakness",
+                "domain": "dyspnea_respiratory",
+                "disposition_diagnosis": "weakness",
+                "inpatient_note_text": "Later ICU course should not be in snapshot export.",
+            }
+        )
+
+    result = validate_csv(csv_path)
+
+    assert result["valid"] is False
+    assert "inpatient_note_text" in result["leakage_risk_columns"]
+    assert any("leakage-risk column" in error for error in result["errors"])
+
+
+def test_validator_rejects_label_keys_inside_snapshot_metadata(tmp_path):
+    csv_path = tmp_path / "metadata_leak.csv"
+    fields = [
+        "case_id",
+        "age",
+        "chief_concern",
+        "domain",
+        "disposition_diagnosis",
+        "metadata_json",
+    ]
+    with csv_path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fields)
+        writer.writeheader()
+        writer.writerow(
+            {
+                "case_id": "LEAK-002",
+                "age": "66",
+                "chief_concern": "dizziness",
+                "domain": "chest_discomfort",
+                "disposition_diagnosis": "dizziness",
+                "metadata_json": json.dumps({"discharge_diagnosis_category": "cardiac"}),
+            }
+        )
+
+    result = validate_csv(csv_path)
+
+    assert result["valid"] is False
+    assert any("metadata_json contains post-disposition-looking key" in error for error in result["errors"])

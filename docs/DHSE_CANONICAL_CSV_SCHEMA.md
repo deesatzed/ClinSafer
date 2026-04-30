@@ -1,5 +1,7 @@
 # DHSE Canonical Flat CSV Schema
 
+Current contract version: `DHSE-CSV-v1.1`.
+
 This schema is the site-neutral bridge from an EHR export into the DHSE
 benchmark. It is deliberately flat so MIMIC, Temple, or another institutional
 extract can map into the same contract without changing the scoring engine.
@@ -22,6 +24,15 @@ python scripts/create_dhse_study_packet.py \
 
 Use `data/dhse_column_mapping_template.csv` to document how each site-native
 field maps into this schema.
+
+The validator treats non-canonical columns that look post-disposition-only as
+fatal by default. Examples include `inpatient_note_text`,
+`post_disposition_lab_*`, `hospital_course_note`, and
+`discharge_summary_text`. The same check is applied recursively to snapshot JSON
+objects such as `metadata_json`, `ed_results_json`, and `vital_trend_json`.
+
+Use `--allow-leakage-risk-columns` only while auditing a mapping file. Do not use
+that flag for a score-producing study packet.
 
 ## Required Snapshot Columns
 
@@ -48,6 +59,10 @@ field maps into this schema.
 | `dialogue_json` | JSON list | Dialogue statements for `dialogue` or `hybrid` mode. |
 | `metadata_json` | JSON object | Extra fields not used directly by scoring. |
 | `ed_los_hours` | number | Used only by the ED LOS baseline. |
+
+`metadata_json`, `ed_results_json`, and `vital_trend_json` must not contain
+post-disposition labels or hospital-course keys. For example, a nested key named
+`discharge_diagnosis_category` in `metadata_json` invalidates the export.
 
 `dialogue_json` items use:
 
@@ -93,3 +108,9 @@ ED snapshot.
 Accepted true values: `1`, `true`, `yes`, `y`, `t`.
 
 Everything else is false unless the field is blank and documented as optional.
+
+## Packet Provenance
+
+`scripts/create_dhse_study_packet.py` records the contract version, field-role
+counts, input SHA-256, git commit, dirty-worktree flag, and hashes of the DHSE
+scoring/validation files in `run_manifest.json`.

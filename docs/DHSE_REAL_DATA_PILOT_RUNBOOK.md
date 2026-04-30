@@ -60,8 +60,12 @@ Exclude:
 python scripts/validate_dhse_export.py path/to/canonical_export.csv --json
 ```
 
-Validation must pass before scoring. Leakage-risk warnings are not always fatal,
-but each warning should be documented in the mapping file.
+Validation must pass before scoring. The validator now fails closed on
+non-canonical columns that look post-disposition-only, and on outcome-looking
+keys hidden inside snapshot JSON fields.
+
+`--allow-leakage-risk-columns` is for mapping audits only. A score-producing
+study packet should not be created with leakage-risk columns present.
 
 ## Run Study Packet
 
@@ -80,6 +84,10 @@ The packet contains:
 - `case_level.csv`
 - `run_manifest.json`
 - `METHODS_SNAPSHOT.md`
+
+The manifest records the data contract version, input hash, field-role counts,
+git commit, dirty-worktree flag, and SHA-256 hashes for the DHSE scoring and
+validation files.
 
 ## Primary Analysis
 

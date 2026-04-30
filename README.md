@@ -248,6 +248,10 @@ Validate a real canonical CSV export:
 python scripts/validate_dhse_export.py path/to/canonical_export.csv --json
 ```
 
+The validator uses contract `DHSE-CSV-v1.1`, reports snapshot/baseline/label
+field roles, and fails closed if post-disposition-looking fields appear in the
+snapshot export.
+
 Create the reproducible retrospective pilot packet:
 
 ```bash
@@ -256,6 +260,10 @@ python scripts/create_dhse_study_packet.py \
   --input-format csv \
   --output-dir artifacts/dhse_real_pilot_YYYYMMDD
 ```
+
+The packet manifest records validation and field-role accounting, input and
+code hashes, git provenance, full reports, compact metrics, case-level outputs,
+and a methods snapshot.
 
 Pilot build documents:
 

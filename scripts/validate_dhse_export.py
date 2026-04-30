@@ -16,69 +16,39 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from jre.dhse_contract import (  # noqa: E402
+    BASELINE_COLUMNS,
+    BOOLEAN_COLUMNS,
+    CONTRACT_VERSION,
+    JSON_LIST_COLUMNS,
+    JSON_OBJECT_COLUMNS,
+    LABEL_COLUMNS,
+    NUMERIC_COLUMNS,
+    REQUIRED_COLUMNS,
+    SNAPSHOT_COLUMNS,
+    SUPPORTED_INPUT_MODES,
+    field_role_report,
+    is_boolean_like,
+    leakage_risk_columns,
+    schema_summary,
+    snapshot_json_leakage_paths,
+)
 from jre.disposition_handoff import load_flat_ehr_csv
 from jre.templates import DOMAIN_TEMPLATES
-
-
-REQUIRED_COLUMNS = {
-    "case_id",
-    "age",
-    "chief_concern",
-    "domain",
-    "disposition_diagnosis",
-}
-
-JSON_OBJECT_COLUMNS = {
-    "ed_results_json",
-    "vital_trend_json",
-    "metadata_json",
-    "trajectory_metadata_json",
-}
-
-JSON_LIST_COLUMNS = {
-    "dialogue_json",
-}
-
-BOOLEAN_COLUMNS = {
-    "icu_transfer_within_24h",
-    "stepdown_transfer_within_24h",
-    "rapid_response_within_24h",
-    "mortality",
-    "major_procedure",
-    "service_change_due_to_diagnosis",
-    "discharge_to_higher_level_of_care",
-    "readmission_30d",
-    "expected_ptr_b",
-}
-
-NUMERIC_COLUMNS = {
-    "age",
-    "ed_los_hours",
-    "los_hours",
-    "expected_los_hours",
-    "delayed_definitive_therapy_hours",
-}
-
-SUPPORTED_INPUT_MODES = {"", "notes", "dialogue", "hybrid"}
-
-LEAKAGE_COLUMN_PATTERNS = (
-    "inpatient_note",
-    "post_disposition_lab",
-    "post_disposition_imaging",
-    "post_ed_result",
-    "future_result",
-    "hospital_course_note",
-    "discharge_summary_text",
-)
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Validate canonical DHSE flat CSV export.")
     parser.add_argument("csv_path", help="Path to canonical flat DHSE CSV.")
     parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON.")
+    parser.add_argument(
+        "--allow-leakage-risk-columns",
+        action="store_true",
+        help="Downgrade non-canonical post-disposition-looking columns to warnings. Use only for mapping audits, not scoring packets.",
+    )
     args = parser.parse_args()
 
-    result = validate_csv(Path(args.csv_path))
+    result = validate_csv(Path(args.csv_path), allow_leakage_risk_columns=args.allow_leakage_risk_columns)
     if args.json:
         print(json.dumps(result, indent=2))
     else:
@@ -86,26 +56,41 @@ def main() -> int:
     return 0 if result["valid"] else 1
 
 
-def validate_csv(path: Path) -> Dict[str, Any]:
+def validate_csv(path: Path | str, allow_leakage_risk_columns: bool = False) -> Dict[str, Any]:
+    path = Path(path)
     errors: List[str] = []
     warnings: List[str] = []
     row_count = 0
     ptr_b_labelable = 0
 
     if not path.exists():
-        return {"valid": False, "errors": [f"file not found: {path}"], "warnings": [], "row_count": 0}
+        return {
+            "valid": False,
+            "contract_version": CONTRACT_VERSION,
+            "errors": [f"file not found: {path}"],
+            "warnings": [],
+            "row_count": 0,
+        }
 
     with path.open("r", encoding="utf-8", newline="") as handle:
         reader = csv.DictReader(handle)
         fieldnames = reader.fieldnames or []
+        roles = field_role_report(fieldnames)
         missing = sorted(REQUIRED_COLUMNS - set(fieldnames))
         if missing:
             errors.append(f"missing required columns: {', '.join(missing)}")
 
-        for column in fieldnames:
-            normalized = column.lower()
-            if any(pattern in normalized for pattern in LEAKAGE_COLUMN_PATTERNS):
-                warnings.append(f"potential leakage-risk column present: {column}")
+        leakage_columns = leakage_risk_columns(fieldnames)
+        for column in leakage_columns:
+            message = f"non-canonical leakage-risk column present: {column}"
+            if allow_leakage_risk_columns:
+                warnings.append(message)
+            else:
+                errors.append(message)
+
+        for column in roles["unknown_columns"]:
+            if column not in leakage_columns:
+                warnings.append(f"unknown non-canonical column ignored by adapter: {column}")
 
         seen_case_ids = set()
         for row_number, row in enumerate(reader, start=2):
@@ -135,16 +120,20 @@ def validate_csv(path: Path) -> Dict[str, Any]:
 
             for column in BOOLEAN_COLUMNS:
                 value = row.get(column, "")
-                if value not in {"", None} and str(value).strip().lower() not in {"0", "1", "true", "false", "yes", "no", "y", "n", "t", "f"}:
+                if not is_boolean_like(value):
                     errors.append(f"row {row_number}: {column} is not boolean-like: {value!r}")
 
             for column in JSON_OBJECT_COLUMNS:
-                _validate_json(row.get(column, ""), dict, row_number, column, errors)
+                parsed = _validate_json(row.get(column, ""), dict, row_number, column, errors)
+                if parsed is not None and column in SNAPSHOT_COLUMNS | BASELINE_COLUMNS:
+                    leakage_paths = snapshot_json_leakage_paths(parsed)
+                    for path_item in leakage_paths:
+                        errors.append(f"row {row_number}: {column} contains post-disposition-looking key: {path_item}")
 
             for column in JSON_LIST_COLUMNS:
                 _validate_json(row.get(column, ""), list, row_number, column, errors)
 
-            if row.get("discharge_diagnosis_category") or row.get("icu_transfer_within_24h") or row.get("los_hours"):
+            if any(str(row.get(column, "")).strip() for column in LABEL_COLUMNS if column != "trajectory_metadata_json"):
                 ptr_b_labelable += 1
 
     if row_count == 0:
@@ -158,29 +147,40 @@ def validate_csv(path: Path) -> Dict[str, Any]:
 
     return {
         "valid": not errors,
+        "contract_version": CONTRACT_VERSION,
         "errors": errors,
         "warnings": warnings,
         "row_count": row_count,
         "ptr_b_labelable_rows": ptr_b_labelable,
+        "allow_leakage_risk_columns": allow_leakage_risk_columns,
+        "schema": schema_summary(),
+        "field_roles": roles if "roles" in locals() else field_role_report([]),
+        "leakage_risk_columns": leakage_columns if "leakage_columns" in locals() else [],
     }
 
 
-def _validate_json(value: str | None, expected_type: type, row_number: int, column: str, errors: List[str]) -> None:
+def _validate_json(value: str | None, expected_type: type, row_number: int, column: str, errors: List[str]) -> Any:
     if value in {"", None}:
-        return
+        return None
     try:
         parsed = json.loads(str(value))
     except json.JSONDecodeError as exc:
         errors.append(f"row {row_number}: {column} invalid JSON: {exc.msg}")
-        return
+        return None
     if not isinstance(parsed, expected_type):
         errors.append(f"row {row_number}: {column} must be JSON {expected_type.__name__}")
+        return None
+    return parsed
 
 
 def _print_human(result: Dict[str, Any]) -> None:
+    print(f"contract: {result.get('contract_version')}")
     print(f"valid: {result['valid']}")
     print(f"rows: {result.get('row_count', 0)}")
     print(f"ptr_b_labelable_rows: {result.get('ptr_b_labelable_rows', 0)}")
+    roles = result.get("field_roles", {}).get("counts", {})
+    if roles:
+        print("field_role_counts: " + ", ".join(f"{role}={count}" for role, count in sorted(roles.items())))
     for warning in result.get("warnings", []):
         print(f"warning: {warning}")
     for error in result.get("errors", []):

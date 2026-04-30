@@ -38,6 +38,12 @@ from .disposition_handoff import (
     snapshot_from_dict,
     trajectory_from_dict,
 )
+from .dhse_contract import (
+    CONTRACT_VERSION as DHSE_CONTRACT_VERSION,
+    DhseColumnSpec,
+    field_role_report,
+    schema_summary,
+)
 from .synthetic_data import BASE_CASES
 
 __all__ = [
@@ -82,5 +88,9 @@ __all__ = [
     "make_paper_analysis",
     "snapshot_from_dict",
     "trajectory_from_dict",
+    "DHSE_CONTRACT_VERSION",
+    "DhseColumnSpec",
+    "field_role_report",
+    "schema_summary",
     "BASE_CASES",
 ]

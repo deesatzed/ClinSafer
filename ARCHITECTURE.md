@@ -310,6 +310,7 @@ Implemented data contracts:
 
 - `data/dhse_synthetic_benchmark.jsonl`
 - canonical flat EHR CSV via `docs/DHSE_CANONICAL_CSV_SCHEMA.md`
+- machine-readable contract source in `jre/dhse_contract.py`
 
 Implemented runner:
 
@@ -323,6 +324,8 @@ python scripts/run_dhse_benchmark.py \
 The safety invariant is a leakage boundary: discharge diagnosis, inpatient
 notes, post-disposition labs/imaging, ICU transfer outcome, LOS, mortality, and
 readmission are labels only and must not influence ED snapshot scoring.
+The CSV validator fails closed on non-canonical post-disposition-looking columns
+and on outcome-looking keys hidden inside snapshot JSON fields.
 
 ## Mitigation architecture
 
