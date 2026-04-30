@@ -122,7 +122,8 @@ Latest local verification:
 ```text
 python -m py_compile interactive_demo.py jre/llm_augment.py
 python -m pytest -q
-334 passed
+350 passed
+python scripts/run_dhse_benchmark.py --review-fraction 0.5 --summary-json artifacts/dhse_summary.json --case-csv artifacts/dhse_cases.csv
 served inline JavaScript parsed with node --check
 ```
 

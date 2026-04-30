@@ -132,6 +132,7 @@ class ReadinessReport:
     traces: List[RuleTrace]
     provider_summary: str
     patient_safe_summary: str
+    uncertainty_graph: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)

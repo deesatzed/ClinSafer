@@ -2,6 +2,8 @@
 
 ## Module overview
 
+Primary intake/autonomy path:
+
 ```text
 Patient conversation / intake form
         ↓
@@ -9,9 +11,10 @@ Transcript parser + input coverage audit
         ↓
 Observation extractor + concept reclassifier
         ↓
-Reliability scorer
+Clinical uncertainty graph
+  (typed nodes, source priors, ranges, distributions, dependencies)
         ↓
-Expert-system safety slots
+Graph readiness and node-state scorer
         ↓
 MUD classifier: missing / uncertain / distorted / contradictory / unknowable
         ↓
@@ -24,6 +27,25 @@ Most-restrictive autonomy governor
 Mitigation planner + final recommendations
         ↓
 Provider boundary map + patient-safe clarification
+```
+
+Retrospective disposition-handoff benchmark path:
+
+```text
+ED disposition-time snapshot
+  (notes, dialogue, or hybrid)
+        ↓
+DispositionSnapshot adapter
+        ↓
+Judgment Readiness Engine
+        ↓
+Black Swan Guardrail assumption layer
+        ↓
+Disposition Sufficiency Index (DSI)
+        ↓
+Post-discharge PTR-B label
+        ↓
+DHSB benchmark metrics, stratification, calibration, and error analysis
 ```
 
 ## Design influence from prior builds
@@ -132,6 +154,16 @@ In this app, VAMS-style memory should recall near-miss boundary shapes, not make
 
 ## Core objects
 
+### ClinicalUncertaintyGraph
+
+The explicit expert-system uncertainty substrate. Each report now includes a
+machine-readable graph of typed clinical nodes with observed value, source,
+source-reliability prior, confidence, range band, range severity, uncertainty
+distribution, dependencies, and action implications.
+
+The graph summary feeds JRE scoring, BSG residual-risk/action-pressure logic,
+and DHSE disposition-risk features.
+
 ### Statement
 
 Raw answer from patient, caregiver, chart, device, or clinician.
@@ -155,6 +187,25 @@ A selected clarification question with rationale and expected information gain.
 ### ReadinessReport
 
 Full provider-facing result.
+
+### DispositionSnapshot
+
+ED-disposition-time representation for retrospective handoff evaluation. It can
+be built from notes, current dialogue, or a hybrid of both. It includes ED note
+text, key PMH, resulted ED data, vital trend, ED treatments, disposition
+diagnosis, service, level of care, and optional dialogue statements.
+
+### PostDischargeTrajectory
+
+Post-discharge outcome object used only for benchmark labeling. It contains
+diagnosis-category revision, LOS/expected LOS, early ICU/stepdown transfer,
+rapid response, major procedure, mortality, therapeutic pivots, readmission, and
+other objective burden fields.
+
+### DispositionSufficiencyReport
+
+DHSE output containing DSI, DHSE state, JRE state, BSG state, risk/protective
+factors, input limitations, and optional PTR-B label.
 
 ## Judgment Readiness Index
 
@@ -225,6 +276,53 @@ The guardrail detects:
 - high-risk host factors that invalidate routine thresholds.
 
 This separates model confidence from autonomy permission. A case can look clinically simple but still be non-automatable because a hidden assumption has failed.
+
+## Disposition Handoff Sufficiency extension
+
+The Disposition Handoff Sufficiency Engine (DHSE) adapts JRE/BSG to a
+retrospective ED admission benchmark. The question is not whether the handoff was
+subjectively good. The question is:
+
+> Using only information available at ED disposition, was the representation
+> sufficient for the inpatient trajectory that actually unfolded?
+
+DHSE supports three source modes:
+
+- `notes`: ED documentation and structured ED data available at disposition.
+- `dialogue`: current elicitation transcript plus structured objective data.
+- `hybrid`: both notes and dialogue, preserving source conflicts.
+
+It returns:
+
+- Disposition Sufficiency Index (DSI), 0-100.
+- state: `SUFFICIENT`, `UNDER_SPECIFIED`, `ACUITY_MISMATCH_RISK`, or
+  `DIAGNOSTIC_PIVOT_RISK`.
+- JRE and BSG states.
+- risk/protective factors and input limitations.
+- optional PTR-B label when post-discharge trajectory data is supplied.
+
+The benchmark label is PTR-B: Post-Disposition Trajectory Revision with Burden.
+PTR-B is positive only when objective trajectory revision and measurable burden
+both occur. Pending results or expected inpatient workup are not failures by
+themselves.
+
+Implemented data contracts:
+
+- `data/dhse_synthetic_benchmark.jsonl`
+- canonical flat EHR CSV via `docs/DHSE_CANONICAL_CSV_SCHEMA.md`
+
+Implemented runner:
+
+```bash
+python scripts/run_dhse_benchmark.py \
+  --reports-json artifacts/dhse_reports.json \
+  --summary-json artifacts/dhse_summary.json \
+  --case-csv artifacts/dhse_cases.csv
+```
+
+The safety invariant is a leakage boundary: discharge diagnosis, inpatient
+notes, post-disposition labs/imaging, ICU transfer outcome, LOS, mortality, and
+readmission are labels only and must not influence ED snapshot scoring.
 
 ## Mitigation architecture
 

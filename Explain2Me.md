@@ -12,6 +12,9 @@
   - JRE (Judgment Readiness Engine): "Do we know enough reliable facts to make a safe decision?"
   - BSG (Black Swan Guardrail): "Are we still in a safe world where automation is allowed to act?"
 
+  A third tool uses the same safety machinery for a different question:
+  - DHSE (Disposition Handoff Sufficiency Engine): "At ED disposition time, was the available record good enough for the inpatient course that later happened?"
+
   This is a demo/interview artifact — built to show a potential employer how clinical AI safety should work. It uses made-up patient stories, not real people.
 
   ---
@@ -36,6 +39,7 @@
   over.
   10. The two inspectors' results combine. Whichever one is more cautious wins. If JRE says READY but BSG says FAIL CLOSED (wrong patient), the final answer is FAIL CLOSED. Safety always wins.
   11. The demo now adds a mitigation plan. It explains what the system does immediately, what it should remember, what a near-miss memory layer would recall next time, and what must go through governance before changing production behavior.
+  12. DHSE takes ED-disposition-time inputs — notes, current dialogue, or both — and scores whether the disposition representation was sufficient. After discharge, it labels whether the case had post-disposition trajectory revision with burden (PTR-B). Discharge outcomes are labels only, not inputs to the score.
 
   ---
   3. All Features — Everything it can actually do right now
@@ -94,10 +98,17 @@
   Threshold Sensitivity Analysis
   - Tests how the system's decisions change when you move 16 different threshold knobs — answering "how fragile are these decisions?"
 
+  Disposition Handoff Sufficiency Benchmark
+  - Scores ED admission snapshots from notes, dialogue, or hybrid inputs.
+  - Produces a Disposition Sufficiency Index (DSI) and states: SUFFICIENT, UNDER SPECIFIED, ACUITY MISMATCH RISK, or DIAGNOSTIC PIVOT RISK.
+  - Uses PTR-B as the hard retrospective label: trajectory revision plus measurable burden.
+  - Supports JSONL fixtures and canonical flat CSV exports for real EHR data mapping.
+  - Emits AUROC, AUPRC, top-decile enrichment, review-budget capture, calibration bins, threshold tables, stratification, and false-positive/false-negative analysis.
+
   ---
   4. Features That Were Tested
 
-  333 tests across 7 test files are passing; the interactive demo file includes focused tests for mitigation, human-factors recommendations, transcript parsing, input coverage audit, free-text bleeding-sentinel regression, back-pain neuro/bladder transcript escalation, and manual red-flag concept reclassification.
+  350 tests are passing; the interactive demo file includes focused tests for mitigation, human-factors recommendations, transcript parsing, input coverage audit, free-text bleeding-sentinel regression, back-pain neuro/bladder transcript escalation, manual red-flag concept reclassification, and clinical uncertainty graph exposure.
 
   - 63 tests on the core JRE engine: chest pressure escalation, breathing denial detection, thunderclap headache escalation, all 13 contradiction rules, all 9 gestalt patterns (including cross-domain), source conflict
   detection, source reliability weighting, 4 modality adaptations, experience memory updates, escalation probes, outcome feedback (all 4 types), LLM failure handling, edge cases (zero statements, extreme ages), utility
@@ -111,6 +122,7 @@
   - Interactive demo tests cover page flow, cases, analysis sections, input coverage audit, mitigation section, feedback, experience, LLM suggestion endpoints, determinism, and edited encounters.
   - 20 tests on observability: structured logging captures all event types, JSON serialization works, log summary statistics are accurate.
   - 12 tests on sensitivity analysis: threshold variations execute without error, state changes are detected, reports are generated correctly.
+  - 9 tests on DHSE: notes/dialogue/hybrid behavior, PTR-B label criteria, synthetic benchmark fixture, paper-facing analysis tables, and canonical flat CSV loading.
 
   ---
   5. Claims Made in the Code or Comments
@@ -124,12 +136,14 @@
   - "The LLM would not be the safety system. The LLM would be the language interface." — The author argues AI chat should only handle language, while a separate deterministic system handles safety decisions.
   - "Regex-only detection (core): will miss novel phrasings not in patterns." — The author honestly admits the pattern-matching approach will miss unusual wording it hasn't been programmed to recognize.
   - "Hand-tuned thresholds... no real outcome data to calibrate against." — The author acknowledges the scoring thresholds are educated guesses, not validated against real clinical outcomes.
+  - "DHSE uses only ED-disposition-time information for scoring." — The author explicitly separates score inputs from post-discharge labels to reduce leakage.
+  - "Pending inpatient workup is not a handoff failure by itself." — DHSE avoids penalizing normal admission flow and only labels PTR-B when trajectory revision and measurable burden both occur.
   - "English-only patterns." — Only works in English.
 
   ---
   6. Forward-Looking Claims
 
-  The core JRE, BSG, experience memory, API, dashboards, and interactive demo are implemented.
+  The core JRE, BSG, DHSE benchmark layer, experience memory, API, dashboards, and interactive demo are implemented.
 
   The new mitigation architecture intentionally distinguishes implemented features from proposed next layers:
 
@@ -143,6 +157,7 @@
   - It is NOT a medical device.
   - It does NOT claim to be production-ready.
   - The thresholds are NOT calibrated against real outcomes.
+  - The DHSE synthetic benchmark is a harness, not a performance claim; real evaluation requires a retrospective EHR cohort mapped into the documented CSV/JSONL contract.
   - It works ONLY in English.
 
   These are presented as known limitations, not future promises.

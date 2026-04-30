@@ -2,6 +2,7 @@ from jre import JudgmentReadinessEngine
 from jre.models import CaseInput, PatientContext, Statement
 from jre.experience import ExperienceMemory, ExperienceEvent
 from jre.synthetic_data import BASE_CASES
+from jre.uncertainty_graph import STRATEGIC_SIGNAL_SPECS
 
 
 def by_id(case_id):
@@ -33,6 +34,97 @@ def test_dyspnea_denial_caught():
     assert r.state == "ESCALATE"
     assert any(f.concept == "oxygen_saturation" for f in r.findings)
     assert any(q.concept in {"oxygen_saturation", "sentence_test", "exertional_tolerance"} for q in r.next_questions)
+
+
+def test_report_contains_clinical_uncertainty_graph():
+    r = JudgmentReadinessEngine().evaluate(by_id("DY-001-denies-sob-low-ox"))
+    graph = r.uncertainty_graph
+
+    assert graph["case_id"] == "DY-001-denies-sob-low-ox"
+    assert "nodes" in graph
+    assert "summary" in graph
+    assert "oxygen_saturation" in graph["nodes"]
+    oxygen = graph["nodes"]["oxygen_saturation"]
+    assert oxygen["observed"] is True
+    assert oxygen["uncertainty_distribution"]["critical"] > 0
+    assert graph["summary"]["action_pressure"] > 0
+
+
+def test_uncertainty_graph_models_strategic_signal_reliability_game():
+    case = CaseInput(
+        case_id="test-strategic-care-avoidance",
+        patient_context=PatientContext(
+            age=45,
+            chief_concern="chest pressure",
+            domain="chest_discomfort",
+            modality="text",
+        ),
+        statements=[
+            Statement(
+                question="What is happening?",
+                answer="It is just stress and I cannot afford the ER, please do not send me. No chest pain, just pressure with stairs.",
+                concept="symptom_quality",
+                source="patient",
+            )
+        ],
+    )
+
+    r = JudgmentReadinessEngine().evaluate(case)
+    graph = r.uncertainty_graph
+
+    assert "care_avoidance_pressure" in graph["summary"]["strategic_signals"]
+    assert graph["summary"]["strategic_signal_load"] > 0
+    symptom_node = graph["nodes"]["symptom_quality"]
+    assert any("STRATEGIC_RELIABILITY_PENALTY" in trace for trace in symptom_node["traces"])
+    assert symptom_node["confidence"] < 0.50
+
+
+def test_uncertainty_graph_models_boundary_fragility():
+    case = CaseInput(
+        case_id="test-boundary-fragility",
+        patient_context=PatientContext(
+            age=58,
+            chief_concern="blood pressure refill",
+            domain="med_refill_hypertension",
+            modality="text",
+        ),
+        statements=[
+            Statement("What is your blood pressure?", "178/96 today.", concept="home_bp_number", source="device"),
+            Statement("Any symptoms?", "No headache, chest pain, or shortness of breath.", concept="side_effects"),
+            Statement("Medication?", "Amlodipine 5 mg.", concept="medication_identity"),
+            Statement("Last dose?", "This morning.", concept="last_taken"),
+        ],
+    )
+
+    r = JudgmentReadinessEngine().evaluate(case)
+    graph = r.uncertainty_graph
+    bp_node = graph["nodes"]["home_bp_number"]
+
+    assert bp_node["range_band"] == "very_high"
+    assert bp_node["boundary_distance"] == 2.0
+    assert bp_node["boundary_fragility"] > 0
+    assert "home_bp_number" in graph["summary"]["fragile_nodes"]
+    assert graph["summary"]["boundary_sensitivity_index"] > 0
+
+
+def test_strategic_signal_specs_are_structurally_valid():
+    signal_ids = {spec.signal_id for spec in STRATEGIC_SIGNAL_SPECS}
+
+    assert {
+        "care_avoidance_pressure",
+        "answer_gaming_pressure",
+        "proxy_misalignment",
+        "coercion_or_observation_pressure",
+        "defensive_minimization",
+        "documentation_closure_pressure",
+    }.issubset(signal_ids)
+    for spec in STRATEGIC_SIGNAL_SPECS:
+        assert isinstance(spec.action_signal, str)
+        assert spec.action_signal.isupper()
+        assert isinstance(spec.reason, str)
+        assert spec.reason
+        assert 0.0 <= spec.reliability_penalty <= 1.0
+        assert 0.0 <= spec.severity <= 1.0
 
 
 def test_boundary_map_has_unknowns():

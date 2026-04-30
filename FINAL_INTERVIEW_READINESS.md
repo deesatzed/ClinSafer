@@ -56,10 +56,12 @@ Current real capabilities:
 - Deterministic Reasoning Integrity Check for anchoring, premature closure, confirmation bias, search satisficing, omission bias, diagnostic momentum, framing risk, availability bias, and overconfidence.
 - Final Recommendations page synthesized from actual analysis output, including a Human Factors Boundary that turns defense/disclosure cues into concrete inference limits, next-question strategy, and LLM prompt constraints.
 - Governance review and clinician feedback memory prototype.
+- Disposition Handoff Sufficiency Engine (DHSE) benchmark path for retrospective ED admission evaluation, including notes/dialogue/hybrid input modes, PTR-B labeling, canonical CSV input, and paper-facing benchmark artifacts.
 
 Verification performed:
 
-- Full local test suite: `334 passed`.
+- Full local test suite: `350 passed`.
+- DHSE benchmark CLI generated `artifacts/dhse_summary.json`, `artifacts/dhse_reports.json`, and `artifacts/dhse_cases.csv`.
 - Live deployed API accepted arbitrary pasted-style encounter data with no pre-tagged concepts.
 - Live deployed API returned `ESCALATE` and `T0_EMERGENCY_OR_HARD_STOP` for the cost-fear exertional chest-discomfort case.
 - Live deployed LLM endpoint returned candidate findings from `extractor`, `boundary`, and `verifier` roles using `qwen/qwen3.6-flash`; the current implementation adds `bias_auditor` as the fourth default role.

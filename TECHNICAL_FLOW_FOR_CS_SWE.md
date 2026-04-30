@@ -6,7 +6,7 @@ This document explains the methodology and technology behind the Judgment Readin
 
 It separates:
 
-- **implemented now**: current `ver2` JRE / BSG / demo behavior,
+- **implemented now**: current `ver2` JRE / BSG / DHSE / demo behavior,
 - **next architecture**: dynamic expert-system software, probabilistic nodes, stigmergic traces, VAMS memory, and governed template promotion.
 
 ## 1. Current Input Pipeline
@@ -41,6 +41,11 @@ The JRE answers:
 The BSG answers:
 
 > Are we still inside the validated operating envelope where this pathway may act?
+
+The DHSE answers:
+
+> At ED disposition time, was the available representation sufficient for the
+> inpatient trajectory that actually unfolded?
 
 ## 2. Observation Extraction
 
@@ -488,7 +493,175 @@ governed experiential calibration
 
 It changes priors and question yield, not autonomous clinical policy.
 
-## 12. Dynamic ESS Node Creation: Proposed Next Architecture
+## 12. Disposition Handoff Sufficiency Engine
+
+DHSE is the retrospective benchmark layer built on top of JRE and BSG.
+
+It intentionally changes the unit of analysis:
+
+```text
+not: live patient-intake autonomy permission
+but: ED disposition representation sufficiency
+```
+
+Primary input object:
+
+```python
+DispositionSnapshot(
+    case_id,
+    input_mode,              # notes, dialogue, or hybrid
+    age,
+    chief_concern,
+    domain,
+    disposition_diagnosis,
+    admission_service,
+    level_of_care,
+    ed_note,
+    key_pmh,
+    ed_results,
+    vital_trend,
+    treatments,
+    dialogue,
+    metadata,
+)
+```
+
+Input modes:
+
+```text
+notes
+  -> evaluates ED documentation and structured ED data available at disposition
+
+dialogue
+  -> evaluates current elicitation quality before note synthesis
+
+hybrid
+  -> evaluates both, preserving source labels and conflicts
+```
+
+DHSE converts the snapshot into a `CaseInput`, runs JRE, wraps it with BSG, then
+computes:
+
+```text
+DSI = Disposition Sufficiency Index, 0-100
+state = SUFFICIENT | UNDER_SPECIFIED | ACUITY_MISMATCH_RISK | DIAGNOSTIC_PIVOT_RISK
+```
+
+Important distinction:
+
+> DHSE does not punish pending inpatient workup. It only scores the ED
+> disposition-time representation and objective data already available before
+> the disposition decision.
+
+## 13. PTR-B Retrospective Label
+
+The primary label is:
+
+```text
+PTR-B = Post-Disposition Trajectory Revision with Burden
+```
+
+PTR-B positive requires both:
+
+```text
+objective trajectory revision
+AND
+measurable clinical/resource burden
+```
+
+Revision examples:
+
+- ED diagnosis category differs from discharge diagnosis category.
+- Floor admission upgrades to stepdown/ICU within 24 hours.
+- Rapid response/code within 24 hours.
+- Major therapeutic pivot, such as pressors, intubation, insulin drip,
+  transfusion, emergent anticoagulation, broad-spectrum antibiotics, procedure,
+  cath lab, OR, or stroke pathway.
+- Admitting service changes because the initial problem representation was
+  materially wrong or incomplete.
+
+Burden examples:
+
+- risk-adjusted LOS at least 1.5x expected and at least 24 hours over expected
+- ICU/stepdown transfer within 24 hours
+- rapid response within 24 hours
+- in-hospital mortality
+- major procedure
+- delayed definitive therapy of at least 6 hours
+- discharge to higher level of care than baseline
+- 30-day readmission
+
+Leakage boundary:
+
+```text
+ED snapshot scoring cannot use discharge diagnosis, inpatient notes,
+post-disposition labs/imaging, ICU transfer, LOS, mortality, or readmission.
+Those fields are labels only.
+```
+
+## 14. DHSB Benchmark Flow
+
+Benchmark input can be JSONL or canonical flat CSV.
+
+Flow:
+
+```text
+JSONL / canonical CSV
+  -> BenchmarkCase[]
+  -> DispositionSnapshot + PostDischargeTrajectory
+  -> DHSE reports
+  -> primary metrics
+  -> baseline metrics
+  -> paper-facing analysis tables
+```
+
+Implemented primary metrics:
+
+```text
+AUROC
+AUPRC
+top-decile enrichment
+capture at fixed review fraction
+calibration bins
+DSI threshold table
+```
+
+Implemented stratifications:
+
+```text
+input mode: notes / dialogue / hybrid
+DHSE state
+defect family
+```
+
+Implemented error analysis:
+
+```text
+false positives at DSI threshold 75
+false negatives at DSI threshold 75
+```
+
+Implemented baselines:
+
+```text
+structured severity heuristic
+nonspecific diagnosis heuristic
+ED LOS heuristic
+JRE-only risk
+Black Swan-only risk
+```
+
+Runner:
+
+```bash
+python scripts/run_dhse_benchmark.py \
+  --input data/dhse_synthetic_benchmark.jsonl \
+  --reports-json artifacts/dhse_reports.json \
+  --summary-json artifacts/dhse_summary.json \
+  --case-csv artifacts/dhse_cases.csv
+```
+
+## 15. Dynamic ESS Node Creation: Proposed Next Architecture
 
 The next architecture should add an AI-generated expert-system planning layer.
 
@@ -535,7 +708,7 @@ Example dynamic node:
 }
 ```
 
-## 13. How To Decide Node Ranges
+## 16. How To Decide Node Ranges
 
 Node ranges should be chosen by evidence type, not one generic confidence score.
 
@@ -585,7 +758,7 @@ Example:
   autonomy effect: cannot renew autonomously
 ```
 
-## 14. Distribution Selection Heuristic
+## 17. Distribution Selection Heuristic
 
 A dynamic ESS planner should choose distribution type like this:
 
@@ -608,7 +781,7 @@ elif repeated events matter:
     count / rate model
 ```
 
-## 15. Validator Layer
+## 18. Validator Layer
 
 AI-generated nodes and rules need validators.
 
@@ -634,7 +807,7 @@ Expert software validates and executes.
 Governance promotes or rejects.
 ```
 
-## 16. Future Ensemble With Dynamic Nodes
+## 19. Future Ensemble With Dynamic Nodes
 
 The future ensemble should combine several model families:
 
@@ -683,7 +856,7 @@ FAIL_CLOSED
 ESCALATE
 ```
 
-## 17. Stigmergic Processing
+## 20. Stigmergic Processing
 
 The proposed stigmergic layer adds memory as a trace field.
 
@@ -723,7 +896,7 @@ Patient says "BP is fine"
 
 This fills the gap where one weak signal is not enough, but multiple weak signals should accumulate.
 
-## 18. VAMS / Hopfield Memory Processing
+## 21. VAMS / Hopfield Memory Processing
 
 The proposed VAMS layer is associative memory for near-miss shapes.
 
@@ -785,7 +958,7 @@ block autonomous refill until verified
 
 But deterministic ESS / BSG still enforce the final autonomy cap.
 
-## 19. Falsifier Processing
+## 22. Falsifier Processing
 
 The falsifier layer answers:
 
@@ -810,7 +983,7 @@ if unresolved:
 
 This converts safety from vague refusal to operational closure.
 
-## 20. Final System Methodology
+## 23. Final System Methodology
 
 A strong final architecture would be:
 
@@ -834,12 +1007,14 @@ A strong final architecture would be:
 13. Evaluate node distributions.
 14. Run JRE readiness ensemble.
 15. Run BSG assumption-sufficiency ensemble.
-16. Deposit signals into stigmergic boundary trace.
-17. Encode boundary signature for VAMS recall.
-18. Recall near-miss analogues and complete missing pattern.
-19. Generate falsifiers and next-best questions.
-20. Apply most-restrictive autonomy governor.
-21. Render provider/executive UX:
+16. For retrospective ED admissions, run DHSE disposition sufficiency scoring
+    and PTR-B benchmark analysis.
+17. Deposit signals into stigmergic boundary trace.
+18. Encode boundary signature for VAMS recall.
+19. Recall near-miss analogues and complete missing pattern.
+20. Generate falsifiers and next-best questions.
+21. Apply most-restrictive autonomy governor.
+22. Render provider/executive UX:
     - statement vs fact
     - input coverage audit
     - model/role provenance
@@ -850,9 +1025,9 @@ A strong final architecture would be:
     - next questions
     - operational value
     - mitigation plan
-22. Capture clinician feedback.
-23. Update experience memory, VAMS acceptance, trace priors.
-24. Queue proposed template/rule changes for governance.
+23. Capture clinician feedback.
+24. Update experience memory, VAMS acceptance, trace priors.
+25. Queue proposed template/rule changes for governance.
 ```
 
 ## Technical Thesis
@@ -862,6 +1037,11 @@ This is an expert-system safety shell whose nodes represent clinical and operati
 Today those nodes are mostly static and deterministic, with concept
 reclassification, input coverage auditing, and bounded multi-role LLM candidate
 extraction implemented around them.
+
+DHSE adds a retrospective benchmark methodology around the same safety shell:
+score only ED-disposition-time information, label only with post-discharge
+trajectory revision plus burden, and report objective metrics instead of
+subjective handoff-quality ratings.
 
 The next version uses:
 

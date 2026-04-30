@@ -14,6 +14,30 @@ from .reasoning_integrity import (
     ReasoningIntegrityReport,
     ReasoningBiasFinding,
 )
+from .uncertainty_graph import (
+    ClinicalNodeSpec,
+    ClinicalNodeState,
+    ClinicalUncertaintyGraph,
+    RangeBand,
+    build_uncertainty_graph,
+)
+from .disposition_handoff import (
+    BenchmarkCase,
+    BenchmarkRun,
+    DispositionHandoffSufficiencyEngine,
+    DispositionSnapshot,
+    PostDischargeTrajectory,
+    TrajectoryBurdenLabel,
+    DispositionSufficiencyReport,
+    INPUT_MODE_SUMMARY,
+    benchmark_case_from_dict,
+    benchmark_case_from_flat_row,
+    load_benchmark_cases,
+    load_flat_ehr_csv,
+    make_paper_analysis,
+    snapshot_from_dict,
+    trajectory_from_dict,
+)
 from .synthetic_data import BASE_CASES
 
 __all__ = [
@@ -38,5 +62,25 @@ __all__ = [
     "ReasoningIntegrityEngine",
     "ReasoningIntegrityReport",
     "ReasoningBiasFinding",
+    "RangeBand",
+    "ClinicalNodeSpec",
+    "ClinicalNodeState",
+    "ClinicalUncertaintyGraph",
+    "build_uncertainty_graph",
+    "DispositionHandoffSufficiencyEngine",
+    "BenchmarkCase",
+    "BenchmarkRun",
+    "DispositionSnapshot",
+    "PostDischargeTrajectory",
+    "TrajectoryBurdenLabel",
+    "DispositionSufficiencyReport",
+    "INPUT_MODE_SUMMARY",
+    "benchmark_case_from_dict",
+    "benchmark_case_from_flat_row",
+    "load_benchmark_cases",
+    "load_flat_ehr_csv",
+    "make_paper_analysis",
+    "snapshot_from_dict",
+    "trajectory_from_dict",
     "BASE_CASES",
 ]

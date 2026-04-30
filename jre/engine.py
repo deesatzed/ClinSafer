@@ -33,6 +33,7 @@ from .models import (
     Statement,
 )
 from .templates import CLEAR_STEPS, CONTRADICTION_RULES, DOMAIN_TEMPLATES, ESCALATION_PROBES, MODALITY_ADAPTATIONS, RED_FLAG_PATTERNS
+from .uncertainty_graph import ClinicalUncertaintyGraph, build_uncertainty_graph
 
 VAGUE_WORDS = re.compile(r"\b(fine|normal|okay|ok|good|not sure|maybe|kind of|kinda|sometimes|a while|recently|usually|i guess|not really)\b", re.I)
 NEGATIVE_WORDS = re.compile(r"\b(no|not|none|deny|denies|never|don't|do not|doesn't|nothing)\b", re.I)
@@ -359,7 +360,20 @@ class JudgmentReadinessEngine:
                         outcome_label="single_turn_evaluation",
                     ))
 
-        scores = self._score(case, template, observations_by_concept, findings)
+        uncertainty_graph = build_uncertainty_graph(case, template, observations_by_concept, findings)
+        graph_dict = uncertainty_graph.to_dict()
+        graph_summary = graph_dict["summary"]
+        if graph_summary.get("breached_nodes"):
+            traces.append(
+                RuleTrace(
+                    "CLINICAL_UNCERTAINTY_GRAPH_BREACH",
+                    "Expert-system node graph found high-risk node states",
+                    ", ".join(graph_summary["breached_nodes"][:8]),
+                    "feeds JRE readiness score and downstream guardrail action pressure",
+                )
+            )
+
+        scores = self._score(case, template, observations_by_concept, findings, uncertainty_graph)
         next_questions = self._select_next_questions(case, template, findings, observations_by_concept, max_questions=max_questions)
         state = self._decide_state(scores, findings, next_questions)
         boundary_map = self._make_boundary_map(template, observations_by_concept, findings)
@@ -377,6 +391,7 @@ class JudgmentReadinessEngine:
             traces=traces,
             provider_summary=provider_summary,
             patient_safe_summary=patient_safe_summary,
+            uncertainty_graph=graph_dict,
         )
 
     # ---------------------------------------------------------------------
@@ -828,7 +843,20 @@ class JudgmentReadinessEngine:
         template: Sequence[SlotSpec],
         obs: Dict[str, Observation],
         findings: Sequence[Finding],
+        graph: Optional[ClinicalUncertaintyGraph] = None,
     ) -> ReadinessScores:
+        if graph is not None:
+            summary = graph.summary
+            return ReadinessScores(
+                completeness=round(float(summary["completeness"]), 3),
+                reliability=round(float(summary["reliability"]), 3),
+                objective_coverage=round(float(summary["objective_coverage"]), 3),
+                contradiction_load=round(float(summary["contradiction_load"]), 3),
+                distortion_load=round(float(summary["semantic_uncertainty_load"]), 3),
+                red_flag_load=round(float(summary["criticality_load"]), 3),
+                readiness_index=round(float(summary["graph_readiness_index"]), 1),
+            )
+
         total_weight = sum(slot.importance for slot in template) or 1.0
         present_weight = sum(slot.importance for slot in template if slot.name in obs and not slot.remote_unknowable)
         completeness = present_weight / total_weight
@@ -1335,6 +1363,34 @@ def report_to_markdown(report: ReadinessReport) -> str:
         for value in values:
             lines.append(f"- {value}")
     lines.append("")
+    if report.uncertainty_graph:
+        summary = report.uncertainty_graph.get("summary", {})
+        lines.append("## Clinical uncertainty graph")
+        lines.append(f"- Nodes: {summary.get('observed_nodes', 0)}/{summary.get('node_count', 0)} observed")
+        lines.append(f"- Graph readiness index: {summary.get('graph_readiness_index')}")
+        lines.append(f"- Action pressure: {summary.get('action_pressure')}")
+        lines.append(f"- Strategic signal load: {summary.get('strategic_signal_load')}")
+        lines.append(f"- Boundary sensitivity index: {summary.get('boundary_sensitivity_index')}")
+        lines.append(f"- Range risk load: {summary.get('range_risk_load')}")
+        lines.append(f"- Missing load: {summary.get('missing_load')}")
+        breached = summary.get("breached_nodes") or []
+        weak = summary.get("weak_nodes") or []
+        fragile = summary.get("fragile_nodes") or []
+        strategic = summary.get("strategic_signals") or []
+        lines.append(f"- Breached nodes: {', '.join(breached) if breached else 'none'}")
+        lines.append(f"- Weak nodes: {', '.join(weak[:8]) if weak else 'none'}")
+        lines.append(f"- Fragile nodes: {', '.join(fragile[:8]) if fragile else 'none'}")
+        lines.append(f"- Strategic signals: {', '.join(strategic[:8]) if strategic else 'none'}")
+        graph_nodes = report.uncertainty_graph.get("nodes", {})
+        for node_id, node in list(graph_nodes.items())[:12]:
+            distribution = node.get("uncertainty_distribution", {})
+            dominant = max(distribution.items(), key=lambda item: item[1])[0] if distribution else "unknown"
+            lines.append(
+                f"  - `{node_id}`: state={node.get('missingness_state')}; "
+                f"range={node.get('range_band') or 'n/a'}; dominant_uncertainty={dominant}; "
+                f"confidence={node.get('confidence')}"
+            )
+        lines.append("")
     lines.append("## Next best questions")
     for i, q in enumerate(report.next_questions, start=1):
         lines.append(f"{i}. **{q.concept}** — {q.question}")

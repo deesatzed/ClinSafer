@@ -599,6 +599,11 @@ class BlackSwanGuardrailEngine:
             score += min(0.18, 0.03 * max(0, len(categories) - 3))
             if report.scores.contradiction_load > 0:
                 score += 0.08
+            graph_summary = (report.uncertainty_graph or {}).get("summary", {})
+            score += min(0.14, 0.12 * float(graph_summary.get("action_pressure", 0.0)))
+            score += min(0.08, 0.08 * float(graph_summary.get("remote_unknowable_load", 0.0)))
+            score += min(0.12, 0.10 * float(graph_summary.get("strategic_signal_load", 0.0)))
+            score += min(0.10, 0.10 * float(graph_summary.get("boundary_sensitivity_index", 0.0)))
         return max(0.0, min(1.0, score))
 
     def _residual_risk_budget(self, case: CaseInput, findings: Sequence[GuardrailFinding], report: Optional[ReadinessReport], novelty: float) -> float:
@@ -606,6 +611,7 @@ class BlackSwanGuardrailEngine:
         severity_load = min(1.0, sum(f.severity for f in findings) / 3.0)
         jre_load = 0.0
         if report is not None:
+            graph_summary = (report.uncertainty_graph or {}).get("summary", {})
             jre_load = min(
                 1.0,
                 0.45 * report.scores.red_flag_load
@@ -613,6 +619,16 @@ class BlackSwanGuardrailEngine:
                 + 0.20 * report.scores.distortion_load
                 + 0.10 * (1 - report.scores.objective_coverage),
             )
+            graph_load = min(
+                1.0,
+                0.40 * float(graph_summary.get("action_pressure", 0.0))
+                + 0.25 * float(graph_summary.get("range_risk_load", 0.0))
+                + 0.20 * float(graph_summary.get("criticality_load", 0.0))
+                + 0.15 * float(graph_summary.get("missing_load", 0.0))
+                + 0.15 * float(graph_summary.get("strategic_signal_load", 0.0))
+                + 0.15 * float(graph_summary.get("boundary_sensitivity_index", 0.0)),
+            )
+            jre_load = max(jre_load, graph_load)
         return min(1.0, 0.50 * severity_load + 0.30 * jre_load + 0.20 * novelty)
 
     def _assumption_register(self, case: CaseInput, findings: Sequence[GuardrailFinding], report: Optional[ReadinessReport], novelty: float) -> List[AssumptionStatus]:
@@ -676,6 +692,75 @@ class BlackSwanGuardrailEngine:
             assumptions.append(AssumptionStatus("Novelty / distribution fit", "weak", f"Novelty score {novelty:.2f} exceeds review threshold."))
         else:
             assumptions.append(AssumptionStatus("Novelty / distribution fit", "ok", f"Novelty score {novelty:.2f}."))
+        if report is not None:
+            graph_summary = (report.uncertainty_graph or {}).get("summary", {})
+            pressure = float(graph_summary.get("action_pressure", 0.0))
+            breached_nodes = graph_summary.get("breached_nodes", [])
+            weak_nodes = graph_summary.get("weak_nodes", [])
+            strategic_load = float(graph_summary.get("strategic_signal_load", 0.0))
+            strategic_signals = graph_summary.get("strategic_signals", [])
+            boundary_sensitivity = float(graph_summary.get("boundary_sensitivity_index", 0.0))
+            fragile_nodes = graph_summary.get("fragile_nodes", [])
+            if pressure >= 0.55 or len(breached_nodes) >= 2:
+                assumptions.append(
+                    AssumptionStatus(
+                        "Clinical uncertainty graph action pressure",
+                        "breached",
+                        f"Graph action pressure {pressure:.2f}; breached nodes: {', '.join(breached_nodes[:6]) or 'none'}.",
+                    )
+                )
+            elif pressure >= 0.25 or weak_nodes:
+                assumptions.append(
+                    AssumptionStatus(
+                        "Clinical uncertainty graph action pressure",
+                        "weak",
+                        f"Graph action pressure {pressure:.2f}; weak nodes: {', '.join(weak_nodes[:6]) or 'none'}.",
+                    )
+                )
+            else:
+                assumptions.append(
+                    AssumptionStatus(
+                        "Clinical uncertainty graph action pressure",
+                        "ok",
+                        f"Graph action pressure {pressure:.2f}.",
+                    )
+                )
+            if strategic_load >= 0.45:
+                assumptions.append(
+                    AssumptionStatus(
+                        "Strategic signal reliability game",
+                        "breached",
+                        f"Strategic signal load {strategic_load:.2f}; signals: {', '.join(strategic_signals[:6]) or 'none'}.",
+                    )
+                )
+            elif strategic_load > 0:
+                assumptions.append(
+                    AssumptionStatus(
+                        "Strategic signal reliability game",
+                        "weak",
+                        f"Strategic signal load {strategic_load:.2f}; signals: {', '.join(strategic_signals[:6]) or 'none'}.",
+                    )
+                )
+            else:
+                assumptions.append(AssumptionStatus("Strategic signal reliability game", "ok", "No incentive-distortion signal detected."))
+            if boundary_sensitivity >= 0.45:
+                assumptions.append(
+                    AssumptionStatus(
+                        "Boundary fragility / dynamical sensitivity",
+                        "breached",
+                        f"Boundary sensitivity {boundary_sensitivity:.2f}; fragile nodes: {', '.join(fragile_nodes[:6]) or 'none'}.",
+                    )
+                )
+            elif boundary_sensitivity >= 0.18:
+                assumptions.append(
+                    AssumptionStatus(
+                        "Boundary fragility / dynamical sensitivity",
+                        "weak",
+                        f"Boundary sensitivity {boundary_sensitivity:.2f}; fragile nodes: {', '.join(fragile_nodes[:6]) or 'none'}.",
+                    )
+                )
+            else:
+                assumptions.append(AssumptionStatus("Boundary fragility / dynamical sensitivity", "ok", f"Boundary sensitivity {boundary_sensitivity:.2f}."))
         return assumptions
 
     def _decide_state(self, findings: Sequence[GuardrailFinding], risk_budget: float, novelty: float, report: Optional[ReadinessReport]) -> Tuple[str, str]:

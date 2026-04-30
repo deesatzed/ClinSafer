@@ -1,0 +1,37 @@
+dhse_column,native_field_or_query,source_table_or_system,temporal_rule,required,notes
+case_id,,,stable encounter identifier,yes,
+input_mode,,,notes/dialogue/hybrid,yes,default notes if only documentation is available
+age,,,age at ED encounter,yes,
+chief_concern,,,available before disposition,yes,
+domain,,,map to supported JRE domain,yes,"examples: dyspnea_respiratory,chest_discomfort,uti_symptoms,rash"
+disposition_diagnosis,,,at ED disposition,yes,
+admission_service,,,at ED disposition,no,
+level_of_care,,,intended bed or care level at ED disposition,no,
+ed_note,,,signed or available at/before ED disposition,no,exclude inpatient notes and discharge summary text
+key_pmh,,,known before disposition,no,pipe-separated
+ed_results_json,,,resulted before disposition,no,JSON object only
+vital_trend_json,,,vitals before disposition,no,JSON object with arrays
+treatments,,,ordered/administered before disposition,no,pipe-separated
+dialogue_json,,,dialogue available before note synthesis,no,JSON list of question/answer objects
+metadata_json,,,snapshot metadata only,no,must not include outcome fields
+ed_los_hours,,,ED arrival to disposition/no later than admission,no,baseline only
+ed_diagnosis_category,,,ED disposition diagnosis category,label,post-disposition label derivation
+discharge_diagnosis_category,,,discharge diagnosis category,label,not a scoring input
+discharge_principal_diagnosis,,,discharge diagnosis,label,not a scoring input
+los_hours,,,index hospital LOS,label,not a scoring input
+expected_los_hours,,,risk-adjusted or DRG expected LOS,label,document model/source
+icu_transfer_within_24h,,,after ED disposition,label,boolean
+stepdown_transfer_within_24h,,,after ED disposition,label,boolean
+rapid_response_within_24h,,,after ED disposition,label,boolean
+mortality,,,index hospitalization,label,boolean
+major_procedure,,,after ED disposition,label,boolean
+service_change_due_to_diagnosis,,,after ED disposition,label,boolean
+major_therapeutic_pivots,,,after ED disposition,label,pipe-separated
+delayed_definitive_therapy_hours,,,after ED disposition,label,numeric hours
+discharge_to_higher_level_of_care,,,at discharge,label,boolean
+readmission_30d,,,after discharge,label,boolean
+trajectory_metadata_json,,,label metadata only,label,must not be copied into snapshot fields
+expected_ptr_b,,,fixture only,no,leave blank for real unlabeled exports
+expected_state,,,fixture only,no,leave blank for real exports
+defect_family,,,analysis stratum/no scoring,no,optional
+notes,,,human audit note/no scoring,no,optional

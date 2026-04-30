@@ -39,6 +39,35 @@ def test_off_pathway_stroke_escalates():
     assert any(f.rule_id == "SENTINEL_STROKE_LANGUAGE" for f in report.findings)
 
 
+def test_guardrail_assumption_register_uses_uncertainty_graph():
+    report = _eval("DY-001-denies-sob-low-ox")
+    graph_assumptions = [
+        a for a in report.assumption_register
+        if a.name == "Clinical uncertainty graph action pressure"
+    ]
+    assert graph_assumptions
+    assert graph_assumptions[0].status in {"weak", "breached"}
+
+
+def test_guardrail_assumption_register_uses_strategic_signals():
+    case = CaseInput(
+        case_id="test-bsg-strategic-signal",
+        patient_context=PatientContext(age=46, chief_concern="chest pressure", domain="chest_discomfort", modality="text"),
+        statements=[
+            Statement(
+                "Tell me what is happening.",
+                "I cannot afford the ER and have to work. It is probably just stress, but I get pressure on stairs.",
+                concept="symptom_quality",
+                source="patient",
+            )
+        ],
+    )
+    report = _eval_case(case)
+    strategic = [a for a in report.assumption_register if a.name == "Strategic signal reliability game"]
+    assert strategic
+    assert strategic[0].status in {"weak", "breached"}
+
+
 def test_pregnancy_pain_sentinel_escalates():
     report = _eval("BS-007-pregnancy-pain-simple-uti")
     assert report.guardrail_state == "ESCALATE"

@@ -45,6 +45,21 @@ JRE documents:
 
 ## Conceptual model
 
+### Clinical uncertainty graph
+
+The core safety object is now an explicit expert-system graph, not a generic AI
+opinion. Clinical facts are represented as typed nodes with source reliability,
+range bands, uncertainty distributions, dependencies, and action implications.
+JRE builds and scores this graph. Black Swan Guardrails use the graph to cap
+allowed action. DHSE tests whether graph uncertainty and guardrail boundaries
+matter against downstream outcomes.
+
+See:
+
+```text
+docs/CLINICAL_UNCERTAINTY_GRAPH.md
+```
+
 ### MUD → CLEAR
 
 **MUD** classifies the uncertainty:
@@ -78,7 +93,7 @@ cd judgment_readiness_engine
 python demo.py --case CP-001-heartburn-pressure
 python demo.py --all --html artifacts/provider_dashboard_sample.html --json artifacts/reports.json
 python black_swan_demo.py --all --html artifacts/black_swan_dashboard.html --json artifacts/black_swan_reports.json --matrix artifacts/black_swan_guardrail_matrix.csv
-python -m unittest discover -s tests -v
+python -m pytest -q
 ```
 
 No external dependencies are required for the core demo.
@@ -200,13 +215,93 @@ jre/engine.py          Judgment Readiness scoring, MUD map, CLEAR questions
 jre/experience.py      Experiential learning memory for distortion priors and question yield
 jre/synthetic_data.py  Synthetic cases and dataset generator
 jre/black_swan.py     Black Swan Guardrail Layer, assumption register, autonomy caps
+jre/disposition_handoff.py  ED disposition handoff sufficiency scoring and PTR-B labeling
 MITIGATION_PLAN.md    Stigmergic/VAMS mitigation plan and demo update path
 TELEMEDICINE_TOP_25_COVERAGE.md  Mapping of common telemedicine reasons to templates
 demo.py               CLI and HTML dashboard generator
 black_swan_demo.py    CLI and HTML dashboard generator for black-swan guardrails
 tests/test_jre.py      Smoke tests for key safety behaviors
+docs/DHSE_*.md         Disposition handoff benchmark/build specifications
 data/                 Synthetic JSONL + flat CSV dataset
 artifacts/            Demo output, reports, provider dashboard HTML
+```
+
+## Disposition Handoff Sufficiency extension
+
+The package now includes a Disposition Handoff Sufficiency Engine (DHSE). DHSE
+uses only information available at ED disposition, then labels post-discharge
+outcomes with Post-Disposition Trajectory Revision with Burden (PTR-B). Pending
+tests and expected inpatient workup are not failures by themselves; PTR-B
+requires both objective trajectory revision and measurable burden.
+
+Run the synthetic fixture:
+
+```bash
+python scripts/run_dhse_benchmark.py \
+  --summary-json artifacts/dhse_summary.json \
+  --case-csv artifacts/dhse_cases.csv
+```
+
+Validate a real canonical CSV export:
+
+```bash
+python scripts/validate_dhse_export.py path/to/canonical_export.csv --json
+```
+
+Create the reproducible retrospective pilot packet:
+
+```bash
+python scripts/create_dhse_study_packet.py \
+  --input path/to/canonical_export.csv \
+  --input-format csv \
+  --output-dir artifacts/dhse_real_pilot_YYYYMMDD
+```
+
+Pilot build documents:
+
+- `docs/DHSE_REAL_DATA_PILOT_RUNBOOK.md`
+- `docs/DHSE_ADJUDICATION_CODEBOOK.md`
+- `docs/DHSE_CANONICAL_CSV_SCHEMA.md`
+- `data/dhse_column_mapping_template.csv`
+- `sql/dhse_cohort_extract_template.sql`
+
+DHSE supports three input modes:
+
+- `notes`: ED note, key PMH, resulted ED data, treatments, disposition diagnosis,
+  service, and level of care.
+- `dialogue`: current patient/clinician dialogue plus structured objective data.
+- `hybrid`: notes and dialogue with source labels preserved for conflict checks.
+
+Build docs:
+
+```text
+docs/DHSE_BUILD_SPEC.md
+docs/DHSE_BENCHMARK_SPEC.md
+docs/DHSE_CANONICAL_CSV_SCHEMA.md
+docs/DHSE_METHODOLOGY.md
+docs/DHSE_IMPLEMENTATION_PLAN.md
+docs/METHODOLOGY_INDEX.md
+```
+
+Run the synthetic benchmark:
+
+```bash
+python scripts/run_dhse_benchmark.py --review-fraction 0.5
+```
+
+Run a canonical flat EHR export:
+
+```bash
+python scripts/run_dhse_benchmark.py --input path/to/export.csv --input-format csv
+```
+
+Emit paper-facing artifacts:
+
+```bash
+python scripts/run_dhse_benchmark.py \
+  --reports-json artifacts/dhse_reports.json \
+  --summary-json artifacts/dhse_summary.json \
+  --case-csv artifacts/dhse_cases.csv
 ```
 
 ---

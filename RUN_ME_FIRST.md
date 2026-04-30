@@ -59,10 +59,55 @@ Open:
 artifacts/black_swan_dashboard.html
 ```
 
+## DHSE disposition handoff benchmark
+
+Synthetic benchmark:
+
+```bash
+python scripts/run_dhse_benchmark.py --review-fraction 0.5
+```
+
+Emit paper-facing artifacts:
+
+```bash
+python scripts/run_dhse_benchmark.py \
+  --reports-json artifacts/dhse_reports.json \
+  --summary-json artifacts/dhse_summary.json \
+  --case-csv artifacts/dhse_cases.csv
+```
+
+Canonical flat EHR export:
+
+```bash
+python scripts/run_dhse_benchmark.py --input path/to/export.csv --input-format csv
+```
+
+Validate a real export:
+
+```bash
+python scripts/validate_dhse_export.py path/to/export.csv --json
+```
+
+Create a full reproducible real-data pilot packet:
+
+```bash
+python scripts/create_dhse_study_packet.py \
+  --input path/to/export.csv \
+  --input-format csv \
+  --output-dir artifacts/dhse_real_pilot_YYYYMMDD
+```
+
+Open:
+
+```text
+artifacts/dhse_summary.json
+artifacts/dhse_cases.csv
+```
+
 ## Tests
 
 ```bash
-python -m unittest discover -s tests -v
+python -m pytest -q
 ```
 
 ## Prove the mitigation flow
@@ -80,10 +125,21 @@ Main files to show in an interview:
 - `MITIGATION_PLAN.md`
 - `INTERVIEW_STRATEGY.md`
 - `BLACK_SWAN_GUARDRAILS.md`
+- `docs/DHSE_METHODOLOGY.md`
+- `docs/DHSE_BENCHMARK_SPEC.md`
+- `docs/DHSE_CANONICAL_CSV_SCHEMA.md`
+- `docs/DHSE_REAL_DATA_PILOT_RUNBOOK.md`
+- `docs/DHSE_ADJUDICATION_CODEBOOK.md`
 - `interactive_demo.py`
 - `artifacts/provider_dashboard_sample.html`
 - `artifacts/black_swan_dashboard.html`
+- `artifacts/dhse_summary.json`
+- `artifacts/dhse_cases.csv`
 - `jre/engine.py`
 - `jre/black_swan.py`
+- `jre/disposition_handoff.py`
 - `data/synthetic_jre_cases_flat.csv`
+- `data/dhse_synthetic_benchmark.jsonl`
+- `data/dhse_column_mapping_template.csv`
+- `sql/dhse_cohort_extract_template.sql`
 - `artifacts/black_swan_guardrail_matrix.csv`

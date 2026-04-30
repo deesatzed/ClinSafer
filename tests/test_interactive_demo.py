@@ -3,7 +3,7 @@
 Covers:
   - Page serving (HTML, 5 screens, JS functions)
   - Cases endpoint (all cases returned, required fields, categories)
-  - Analysis endpoint (14 sections, field validation, escalation, happy path)
+  - Analysis endpoint (15 sections, field validation, escalation, happy path)
   - Feedback endpoint (accepted, invalid rejected)
   - Experience endpoint (priors returned)
   - Suggest-rule/case endpoints (graceful without LLM key)
@@ -44,6 +44,7 @@ EXPECTED_SECTION_IDS = [
     "observations",
     "mud_map",
     "red_flags",
+    "uncertainty_graph",
     "jri_score",
     "guardrails",
     "reasoning_integrity",

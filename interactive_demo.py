@@ -978,6 +978,53 @@ def _build_jri_section(
     }
 
 
+def _build_uncertainty_graph_section(
+    jre_report: ReadinessReport,
+) -> Dict[str, Any]:
+    """Section: explicit expert-system uncertainty nodes."""
+    graph = jre_report.uncertainty_graph or {"summary": {}, "nodes": {}}
+    summary = graph.get("summary", {})
+    rows = []
+    for node_id, node in graph.get("nodes", {}).items():
+        dist = node.get("uncertainty_distribution", {})
+        dominant = max(dist.items(), key=lambda item: item[1])[0] if dist else "unknown"
+        rows.append(
+            {
+                "node_id": node_id,
+                "label": node.get("label", node_id),
+                "observed": node.get("observed", False),
+                "raw_value": node.get("raw_value") or "",
+                "source": node.get("source") or "",
+                "confidence": node.get("confidence", 0),
+                "range_band": node.get("range_band") or "",
+                "range_severity": node.get("range_severity", 0),
+                "state": node.get("missingness_state", ""),
+                "dominant_uncertainty": dominant,
+                "distribution": dist,
+                "boundary_distance": node.get("boundary_distance"),
+                "boundary_fragility": node.get("boundary_fragility", 0),
+                "perturbation_flip_risk": node.get("perturbation_flip_risk", 0),
+                "actions": node.get("action_implications", []),
+            }
+        )
+    rows.sort(
+        key=lambda row: (
+            -float(row.get("range_severity") or 0),
+            str(row.get("state")) not in {"conflicted", "objective_needed", "missing", "remote_unknowable"},
+            str(row.get("node_id")),
+        )
+    )
+    return {
+        "id": "uncertainty_graph",
+        "title": "Clinical Uncertainty Graph",
+        "subtitle": "Typed expert-system nodes with ranges, source reliability, uncertainty distributions, and action implications.",
+        "data": {
+            "summary": summary,
+            "nodes": rows,
+        },
+    }
+
+
 def _build_guardrails_section(
     bsg_report: GuardrailReport,
 ) -> Dict[str, Any]:
@@ -2059,6 +2106,7 @@ def _build_progressive_sections(
         _build_observations_section(jre_report),
         _build_mud_map_section(jre_report),
         _build_red_flags_section(jre_report),
+        _build_uncertainty_graph_section(jre_report),
         _build_jri_section(jre_report),
         _build_guardrails_section(bsg_report),
         _build_reasoning_integrity_section(reasoning_report),
@@ -4287,6 +4335,7 @@ function renderSectionBody(section) {
     case 'observations': el.innerHTML = renderObservations(section.data); break;
     case 'mud_map': el.innerHTML = renderMudMap(section.data); break;
     case 'red_flags': el.innerHTML = renderRedFlags(section.data); break;
+    case 'uncertainty_graph': el.innerHTML = renderUncertaintyGraph(section.data); break;
     case 'jri_score': el.innerHTML = renderJRI(section.data); break;
     case 'guardrails': el.innerHTML = renderGuardrails(section.data); break;
     case 'reasoning_integrity': el.innerHTML = renderReasoningIntegrity(section.data); break;
@@ -4527,6 +4576,50 @@ function renderRedFlags(data) {
   for (const sc of data.source_conflicts) {
     h += '<div class="conflict-item"><strong>' + esc(sc.description) + '</strong> ' + authorityChip(sc.authority) + '<br><span style="font-size:12px;color:var(--text-dim);">' + esc(sc.evidence) + '</span></div>';
   }
+  return h;
+}
+
+function renderUncertaintyGraph(data) {
+  const s = data.summary || {};
+  const nodes = data.nodes || [];
+  let h = '<div class="summary-grid" style="margin-bottom:12px;">';
+    const metrics = [
+    ['Nodes observed', String(s.observed_nodes || 0) + '/' + String(s.node_count || 0)],
+    ['Graph readiness', String(s.graph_readiness_index ?? '')],
+    ['Action pressure', Number(s.action_pressure || 0).toFixed(2)],
+    ['Strategic signal load', Number(s.strategic_signal_load || 0).toFixed(2)],
+    ['Boundary sensitivity', Number(s.boundary_sensitivity_index || 0).toFixed(2)],
+    ['Range risk', Number(s.range_risk_load || 0).toFixed(2)],
+    ['Missing load', Number(s.missing_load || 0).toFixed(2)],
+    ['Objective coverage', Number(s.objective_coverage || 0).toFixed(2)]
+  ];
+  for (const [label, value] of metrics) {
+    h += '<div class="summary-note"><strong>' + esc(label) + '</strong><br>' + esc(value) + '</div>';
+  }
+  h += '</div>';
+  if ((s.breached_nodes || []).length || (s.weak_nodes || []).length) {
+    h += '<div class="coverage-warning"><strong>Graph node status:</strong> breached: ' + esc((s.breached_nodes || []).join(', ') || 'none') + ' | weak: ' + esc((s.weak_nodes || []).slice(0, 8).join(', ') || 'none') + '</div>';
+  }
+  if ((s.strategic_signals || []).length || (s.fragile_nodes || []).length) {
+    h += '<div class="coverage-warning"><strong>Strategic / dynamical signals:</strong> strategic: ' + esc((s.strategic_signals || []).join(', ') || 'none') + ' | fragile: ' + esc((s.fragile_nodes || []).slice(0, 8).join(', ') || 'none') + '</div>';
+  }
+  h += '<div class="coverage-table-wrap"><table class="coverage-table"><thead><tr><th>Node</th><th>Value / Source</th><th>State</th><th>Range</th><th>Fragility</th><th>Dominant Uncertainty</th><th>Action Implications</th></tr></thead><tbody>';
+  for (const n of nodes.slice(0, 18)) {
+    const rangeSeverity = Number(n.range_severity || 0);
+    const fragility = Number(n.boundary_fragility || 0);
+    const rowClass = rangeSeverity >= 0.75 || fragility >= 0.45 ? 'low-confidence' : '';
+    h += '<tr class="' + rowClass + '">';
+    h += '<td><strong>' + esc(n.label || n.node_id) + '</strong><br><small>' + esc(n.node_id || '') + '</small></td>';
+    h += '<td>' + (n.observed ? esc(String(n.raw_value || '').substring(0, 90)) : '<em>not observed</em>') + '<br><small>source: ' + esc(n.source || 'none') + ' / conf ' + Number(n.confidence || 0).toFixed(2) + '</small></td>';
+    h += '<td><span class="coverage-status coverage-' + esc(n.state || 'missing') + '">' + esc(String(n.state || '').replace(/_/g, ' ')) + '</span></td>';
+    h += '<td>' + esc(n.range_band || 'n/a') + '<br><small>severity ' + rangeSeverity.toFixed(2) + '</small></td>';
+    h += '<td>' + fragility.toFixed(2) + '<br><small>flip ' + Number(n.perturbation_flip_risk || 0).toFixed(2) + '</small></td>';
+    h += '<td>' + esc(String(n.dominant_uncertainty || '').replace(/_/g, ' ')) + '</td>';
+    h += '<td>';
+    for (const a of (n.actions || []).slice(0, 3)) h += '<span class="coverage-chip">' + esc(a) + '</span>';
+    h += '</td></tr>';
+  }
+  h += '</tbody></table></div>';
   return h;
 }
 
