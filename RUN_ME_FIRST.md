@@ -146,6 +146,7 @@ Main files to show in an interview:
 - `MITIGATION_PLAN.md`
 - `INTERVIEW_STRATEGY.md`
 - `BLACK_SWAN_GUARDRAILS.md`
+- `docs/ANY_DISPOSITION_MODEL_PLAN.md`
 - `docs/DHSE_METHODOLOGY.md`
 - `docs/DHSE_BENCHMARK_SPEC.md`
 - `docs/DHSE_CANONICAL_CSV_SCHEMA.md`

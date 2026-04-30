@@ -6,6 +6,11 @@ The Disposition Handoff Sufficiency Engine (DHSE) evaluates whether the ED
 disposition representation available at the moment of admission was sufficient
 for the inpatient trajectory that actually unfolded.
 
+DHSE is now the first implemented head inside the broader Any Dispo model plan.
+It covers the ED admission/handoff direction. The umbrella plan extends the same
+uncertainty graph, guardrails, leakage controls, and empirical review metrics to
+home, observation, inpatient, transfer, and level-of-care decisions.
+
 The method is retrospective. It uses only ED-disposition-time inputs for scoring
 and uses post-discharge facts only for labeling and evaluation.
 

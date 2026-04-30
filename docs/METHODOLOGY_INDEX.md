@@ -1,6 +1,6 @@
 # Methodology Index
 
-This repository now contains five related but distinct methodology layers.
+This repository now contains six related but distinct methodology layers.
 
 ## 1. Judgment Readiness
 
@@ -45,7 +45,42 @@ Method:
   workflow failure.
 - Return a guardrail state and maximum autonomy tier.
 
-## 3. Disposition Handoff Sufficiency
+## 3. Any Disposition Judgment Readiness
+
+Primary files:
+
+- `docs/ANY_DISPOSITION_MODEL_PLAN.md`
+- `ARCHITECTURE.md`
+- `README.md`
+
+Planned files:
+
+- `jre/any_disposition.py`
+- `jre/any_dispo_contract.py`
+- `scripts/validate_any_dispo_export.py`
+- `scripts/export_any_dispo_features.py`
+- `scripts/benchmark_any_dispo_models.py`
+- `docs/ANY_DISPO_CANONICAL_CSV_SCHEMA.md`
+- `docs/ANY_DISPO_ADJUDICATION_CODEBOOK.md`
+- `data/any_dispo_column_mapping_template.csv`
+- `sql/any_dispo_cohort_extract_template.sql`
+
+Method:
+
+- Treat every proposed disposition as a fit problem between patient state,
+  uncertainty, destination capability, follow-up reliability, and monitoring
+  need.
+- Support lower-acuity risk, admission-benefit uncertainty, level-of-care
+  mismatch, and uncertainty-preservation questions under one umbrella.
+- Preserve deterministic blockers for unstable, worsening, unresolved, or
+  inadequately supported cases.
+- Use empirical models only to prioritize review and abstain under uncertainty.
+- Avoid claims such as "safe to discharge" or "unnecessary admission"; use
+  review labels such as `home_ready_review_candidate`,
+  `admission_benefit_uncertain`, and `level_of_care_mismatch`.
+- Keep outcome and hospital-course data as labels only.
+
+## 4. Disposition Handoff Sufficiency
 
 Primary files:
 
@@ -64,6 +99,7 @@ Primary files:
 
 Method:
 
+- Treat DHSE as the first implemented Any Dispo head.
 - Score only information available at ED disposition.
 - Enforce the `DHSE-CSV-v1.1` contract with explicit snapshot, baseline, label,
   and fixture field roles.
@@ -78,7 +114,7 @@ Method:
   full reports, compact metrics, case-level outputs, a manifest, and a methods
   snapshot.
 
-## 4. Empirical Boundary Learning
+## 5. Empirical Boundary Learning
 
 Primary files:
 
@@ -88,8 +124,8 @@ Primary files:
 
 Method:
 
-- Convert DHSE/JRE/BSG reports into a stable, text-free tabular feature
-  contract: `DHSE-EMPIRICAL-v0.1`.
+- Convert DHSE/Any Dispo/JRE/BSG reports into stable, text-free tabular feature
+  contracts, starting with `DHSE-EMPIRICAL-v0.1`.
 - Export DSI, graph summaries, guardrail assumptions, residual-risk fields, and
   PTR-B labels for downstream calibrated models.
 - Benchmark imbalanced-data models by AUPRC, recall at review budget, precision
@@ -98,7 +134,7 @@ Method:
 - Add selective/conformal thresholds so the empirical layer can say "review" or
   "abstain," but cannot override deterministic guardrails.
 
-## 5. Governed Medical Knowledge Acquisition
+## 6. Governed Medical Knowledge Acquisition
 
 Primary files:
 
@@ -129,3 +165,5 @@ Method:
 - Empirical models and retrieved medical facts can make the system more
   conservative before validation; they cannot loosen autonomy boundaries without
   governance and outcome evidence.
+- Any Dispo review signals do not order a disposition. They route cases to the
+  right review path and preserve the reason uncertainty remains.

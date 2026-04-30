@@ -11,6 +11,11 @@ Guardrails to ED admissions. It scores only the information available at the
 time of ED disposition, then the benchmark labels outcomes retrospectively after
 hospital discharge.
 
+DHSE is the first implemented head in the broader Any Dispo roadmap. It should
+not be replaced. It should become the admission/handoff specialization while new
+heads cover lower-acuity risk, admission-benefit uncertainty, and level-of-care
+mismatch.
+
 ## Primary Question
 
 At ED disposition time, did the ED note, key PMH, resulted ED data, treatments,

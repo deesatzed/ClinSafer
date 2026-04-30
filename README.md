@@ -1,12 +1,16 @@
 # Judgment Readiness Engine (JRE)
 
-Prototype interview artifact for a clinical AI company: an **Unknowns Intelligence Layer** that sits between patient intake and any autonomous or semi-autonomous action.
+Prototype interview artifact for a clinical AI company: an **Unknowns Intelligence Layer** that sits between patient intake, disposition review, and any autonomous or semi-autonomous action.
 
 The core question is not “what is the diagnosis?”
 
 The core question is:
 
 > **Do we have enough reliable information, with acceptable residual uncertainty, to act safely?**
+
+The disposition version of that question is now broader:
+
+> **For any proposed disposition, is the destination and level of monitoring justified by the evidence we have, the uncertainty that remains, and the resources available at that destination?**
 
 This module demonstrates a small, deterministic version of that idea using synthetic data.
 
@@ -58,6 +62,7 @@ See:
 
 ```text
 docs/CLINICAL_UNCERTAINTY_GRAPH.md
+docs/ANY_DISPOSITION_MODEL_PLAN.md
 docs/EMPIRICAL_UNCERTAINTY_PLAN.md
 docs/GOVERNED_MEDICAL_KNOWLEDGE_LAYER.md
 ```
@@ -217,25 +222,53 @@ jre/engine.py          Judgment Readiness scoring, MUD map, CLEAR questions
 jre/experience.py      Experiential learning memory for distortion priors and question yield
 jre/synthetic_data.py  Synthetic cases and dataset generator
 jre/black_swan.py     Black Swan Guardrail Layer, assumption register, autonomy caps
-jre/disposition_handoff.py  ED disposition handoff sufficiency scoring and PTR-B labeling
+jre/disposition_handoff.py  First implemented Any Dispo head: ED disposition handoff sufficiency scoring and PTR-B labeling
 jre/empirical_uncertainty.py  Text-free empirical feature contract for TabPFN/GBDT/conformal modeling
 MITIGATION_PLAN.md    Stigmergic/VAMS mitigation plan and demo update path
 TELEMEDICINE_TOP_25_COVERAGE.md  Mapping of common telemedicine reasons to templates
 demo.py               CLI and HTML dashboard generator
 black_swan_demo.py    CLI and HTML dashboard generator for black-swan guardrails
 tests/test_jre.py      Smoke tests for key safety behaviors
-docs/DHSE_*.md         Disposition handoff benchmark/build specifications
+docs/ANY_DISPOSITION_MODEL_PLAN.md  Umbrella plan for discharge, admission, observation, transfer, and level-of-care review
+docs/DHSE_*.md         First implemented Any Dispo head: disposition handoff benchmark/build specifications
 data/                 Synthetic JSONL + flat CSV dataset
 artifacts/            Demo output, reports, provider dashboard HTML
+```
+
+## Any Dispo focus
+
+The product framing is now **Any Dispo Judgment Readiness**. The goal is not
+only to find discharged patients who should have stayed. The same safety shell
+should also find admitted, observed, transferred, or higher-acuity patients
+whose disposition benefit is uncertain and should be reviewed.
+
+The four disposition questions are:
+
+1. lower-acuity risk: home, telehealth, or low-monitoring path may be unsafe;
+2. higher-acuity benefit uncertainty: admission, observation, or transfer may
+   need review for low observed inpatient-only need;
+3. level-of-care mismatch: floor, telemetry, stepdown, ICU, SNF, rehab, or home
+   health may not match the resource need;
+4. uncertainty preservation: the evidence may not support either reassurance or
+   escalation yet.
+
+The system should say `candidate for disposition review`, not `safe to
+discharge` or `unnecessary admission`.
+
+See:
+
+```text
+docs/ANY_DISPOSITION_MODEL_PLAN.md
 ```
 
 ## Disposition Handoff Sufficiency extension
 
 The package now includes a Disposition Handoff Sufficiency Engine (DHSE). DHSE
-uses only information available at ED disposition, then labels post-discharge
-outcomes with Post-Disposition Trajectory Revision with Burden (PTR-B). Pending
-tests and expected inpatient workup are not failures by themselves; PTR-B
-requires both objective trajectory revision and measurable burden.
+is the first implemented Any Dispo head. It uses only information available at
+ED disposition, then labels post-discharge outcomes with Post-Disposition
+Trajectory Revision with Burden (PTR-B). Pending tests and expected inpatient
+workup are not failures by themselves; PTR-B requires both objective trajectory
+revision and measurable burden.
 
 Run the synthetic fixture:
 
@@ -347,15 +380,19 @@ The safety system would be:
 6. **Experience memory** — learns which questions expose hidden risk in which patient/context patterns.
 7. **Stigmergic boundary trace** — keeps unresolved claims, source conflicts, stale data, social/workflow pressure, and feedback from disappearing between turns.
 8. **VAMS-style near-miss recall** — recalls prior boundary failures from partial case signatures and suggests missing nodes or falsifiers.
-9. **Empirical boundary learner** — uses DHSE feature exports, imbalanced-data
+9. **Any Dispo disposition governor** — audits whether the proposed destination
+   and level of monitoring are justified, whether a lower-acuity path is blocked,
+   whether admission benefit is uncertain, and whether level of care is
+   mismatched.
+10. **Empirical boundary learner** — uses DHSE/Any Dispo feature exports, imbalanced-data
    metrics, TabPFN/GBDT baselines, calibration, and selective/conformal
    thresholds to learn where review is needed.
-10. **Governed medical knowledge layer** — asks narrow guideline/red-flag
+11. **Governed medical knowledge layer** — asks narrow guideline/red-flag
     questions, stores source-bound candidate facts, and promotes only reviewed
     rules.
-11. **Governance queue** — promotes learned rules/templates only after validation, simulation, and review.
-12. **Arbiter** — decides whether the case is ready, needs clarification, needs objective data, or must escalate.
-13. **Provider UI** — shows the boundary map and rule trace, not just a note summary.
+12. **Governance queue** — promotes learned rules/templates only after validation, simulation, and review.
+13. **Arbiter** — decides whether the case is ready, needs clarification, needs objective data, or must escalate.
+14. **Provider UI** — shows the boundary map and rule trace, not just a note summary.
 
 This is designed to be inserted into a telehealth or autonomous-intake pipeline before refills, triage, symptom assessment, or chronic disease check-ins.
 

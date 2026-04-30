@@ -29,6 +29,27 @@ Mitigation planner + final recommendations
 Provider boundary map + patient-safe clarification
 ```
 
+Any Dispo review path:
+
+```text
+Decision-time snapshot
+  (ED, observation, inpatient, telehealth, clinic, transfer, or transition)
+        ↓
+Proposed disposition + destination capability map
+  (home, observation, floor, telemetry, stepdown, ICU, transfer, SNF, rehab)
+        ↓
+Clinical uncertainty graph
+        ↓
+Black Swan Guardrail assumption layer
+        ↓
+Disposition-specific review heads
+  (lower-acuity risk, admission-benefit uncertainty, level-of-care mismatch)
+        ↓
+Most-restrictive disposition governor
+        ↓
+Candidate review signal, blockers, missing evidence, and safer alternatives
+```
+
 Retrospective disposition-handoff benchmark path:
 
 ```text
@@ -51,7 +72,7 @@ DHSB benchmark metrics, stratification, calibration, and error analysis
 Empirical boundary-learning path:
 
 ```text
-DHSE/JRE/BSG reports
+DHSE/Any Dispo/JRE/BSG reports
         ↓
 Text-free empirical feature contract
         ↓
@@ -225,10 +246,26 @@ Full provider-facing result.
 
 ### DispositionSnapshot
 
-ED-disposition-time representation for retrospective handoff evaluation. It can
-be built from notes, current dialogue, or a hybrid of both. It includes ED note
-text, key PMH, resulted ED data, vital trend, ED treatments, disposition
-diagnosis, service, level of care, and optional dialogue statements.
+ED-disposition-time representation for retrospective handoff evaluation. It is
+the first implemented specialization of the broader Any Dispo decision-time
+snapshot. It can be built from notes, current dialogue, or a hybrid of both. It
+includes ED note text, key PMH, resulted ED data, vital trend, ED treatments,
+disposition diagnosis, service, level of care, and optional dialogue statements.
+
+### ProposedDisposition
+
+Future Any Dispo object describing the destination being evaluated:
+home, observation, inpatient floor, telemetry, stepdown, ICU, transfer, SNF,
+rehab, home health, or other transition path. It should carry the decision
+timestamp, proposed service, monitoring level, follow-up plan, and documented
+reason for the proposed destination.
+
+### DestinationCapability
+
+Future Any Dispo object describing what the destination can actually provide:
+serial vitals, oxygen, IV therapy, telemetry, urgent imaging/procedure access,
+nursing checks, rapid reassessment, medication access, caregiver support, and
+confirmed follow-up.
 
 ### PostDischargeTrajectory
 
@@ -241,6 +278,14 @@ other objective burden fields.
 
 DHSE output containing DSI, DHSE state, JRE state, BSG state, risk/protective
 factors, input limitations, and optional PTR-B label.
+
+### AnyDispositionReviewReport
+
+Planned umbrella report for any proposed disposition. It should contain the
+proposed destination, deterministic blockers, destination capability gaps,
+lower-acuity risk signal, admission-benefit uncertainty signal, level-of-care
+mismatch signal, empirical review priority, conformal/selective abstention state,
+and clinician-review recommendation.
 
 ## Judgment Readiness Index
 
@@ -280,7 +325,36 @@ The deployed app now enforces these demo-level guarantees:
 5. Add VAMS-style `AssociativeCaseMemory` for near-miss recall from sparse case signatures.
 6. Add falsifier planning: what would disprove danger, what would disprove reassurance, and what evidence changes the autonomy cap.
 7. Add governed AI-generated dynamic templates: LLM proposes nodes, ranges, distributions, and rules; validators decide what can execute.
-8. Build A/B studies: ordinary intake vs uncertainty-aware intake.
+8. Add Any Dispo schema and review heads for lower-acuity risk, admission-benefit
+   uncertainty, and level-of-care mismatch.
+9. Build A/B studies: ordinary intake vs uncertainty-aware intake.
+
+## Any Dispo umbrella
+
+The architecture should now be described as Any Dispo first, DHSE second. DHSE
+remains the concrete implemented head for retrospective ED disposition handoff
+sufficiency. The umbrella expands the same graph, guardrail, and empirical
+boundary-learning substrate to every proposed disposition:
+
+- home or low-monitoring path,
+- observation,
+- inpatient floor,
+- telemetry or monitored bed,
+- stepdown or ICU,
+- transfer,
+- SNF, rehab, home health, or other transition.
+
+Any Dispo outputs a review signal, not an autonomous destination order. It asks
+whether the proposed destination has sufficient evidence and capability. The
+inverse/admission-benefit head must be especially conservative: it can identify
+`admission_benefit_uncertain` or `home_ready_review_candidate`, but it cannot
+declare an admission unnecessary.
+
+The planned contract is `ANY-DISPO-CSV-v0.1`. It should preserve the same
+leakage invariant used by DHSE: decision-time snapshot fields are inputs;
+hospital-course and post-disposition fields are labels only.
+
+See `docs/ANY_DISPOSITION_MODEL_PLAN.md`.
 
 ## Black Swan Guardrail Layer extension
 
@@ -315,8 +389,9 @@ This separates model confidence from autonomy permission. A case can look clinic
 ## Disposition Handoff Sufficiency extension
 
 The Disposition Handoff Sufficiency Engine (DHSE) adapts JRE/BSG to a
-retrospective ED admission benchmark. The question is not whether the handoff was
-subjectively good. The question is:
+retrospective ED admission benchmark. It is the first implemented Any Dispo
+head. The question is not whether the handoff was subjectively good. The
+question is:
 
 > Using only information available at ED disposition, was the representation
 > sufficient for the inpatient trajectory that actually unfolded?

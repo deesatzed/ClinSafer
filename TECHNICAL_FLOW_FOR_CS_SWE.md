@@ -1007,19 +1007,24 @@ A strong final architecture would be:
 13. Evaluate node distributions.
 14. Run JRE readiness ensemble.
 15. Run BSG assumption-sufficiency ensemble.
-16. For retrospective ED admissions, run DHSE disposition sufficiency scoring
-    and PTR-B benchmark analysis.
-17. Export text-free empirical features for imbalanced tabular modeling,
+16. Run the Any Dispo review layer for the proposed destination:
+    - lower-acuity risk,
+    - admission-benefit uncertainty,
+    - level-of-care mismatch,
+    - uncertainty-preserving review.
+17. For retrospective ED admissions, run DHSE disposition sufficiency scoring
+    and PTR-B benchmark analysis as the first implemented Any Dispo head.
+18. Export text-free empirical features for imbalanced tabular modeling,
     TabPFN/GBDT benchmarking, calibration, and selective/conformal review
     thresholds.
-18. Ask governed medical-knowledge questions only as atomic guideline/red-flag
+19. Ask governed medical-knowledge questions only as atomic guideline/red-flag
     candidate retrieval, with citations and human review before promotion.
-19. Deposit signals into stigmergic boundary trace.
-20. Encode boundary signature for VAMS recall.
-21. Recall near-miss analogues and complete missing pattern.
-22. Generate falsifiers and next-best questions.
-23. Apply most-restrictive autonomy governor.
-24. Render provider/executive UX:
+20. Deposit signals into stigmergic boundary trace.
+21. Encode boundary signature for VAMS recall.
+22. Recall near-miss analogues and complete missing pattern.
+23. Generate falsifiers and next-best questions.
+24. Apply most-restrictive autonomy governor.
+25. Render provider/executive UX:
     - statement vs fact
     - input coverage audit
     - model/role provenance
@@ -1030,9 +1035,9 @@ A strong final architecture would be:
     - next questions
     - operational value
     - mitigation plan
-25. Capture clinician feedback.
-26. Update experience memory, VAMS acceptance, trace priors.
-27. Queue proposed template/rule changes for governance.
+26. Capture clinician feedback.
+27. Update experience memory, VAMS acceptance, trace priors.
+28. Queue proposed template/rule changes for governance.
 ```
 
 ## Technical Thesis
@@ -1048,10 +1053,18 @@ score only ED-disposition-time information, label only with post-discharge
 trajectory revision plus burden, and report objective metrics instead of
 subjective handoff-quality ratings.
 
+Any Dispo is the broader product framing. DHSE is one head inside it. The same
+uncertainty graph and guardrail substrate should evaluate every proposed
+destination: home, observation, inpatient floor, monitored bed, stepdown, ICU,
+transfer, SNF, rehab, home health, or other transition. The outputs are review
+signals such as lower-acuity risk, admission-benefit uncertainty, level-of-care
+mismatch, and missing destination capability. The system does not order the
+disposition.
+
 The empirical uncertainty layer adds a model-ready tabular contract for
 calibrated imbalanced learning. TabPFN, tuned GBDT, and transparent baselines can
-estimate PTR-B/review yield, but their outputs only raise review priority or
-abstain unless governed evidence promotes them.
+estimate PTR-B and Any Dispo review yield, but their outputs only raise review
+priority or abstain unless governed evidence promotes them.
 
 The governed medical knowledge layer counters the "you still need medical
 expertise" critique by making expert knowledge explicit: atomic model-assisted
@@ -1061,6 +1074,7 @@ versioning, rollback, and monitoring.
 The next version uses:
 
 - AI to propose case-specific nodes, ranges, and distributions,
+- Any Dispo data contracts for lower-acuity risk and admission-benefit review,
 - empirical feature exports to calibrate review thresholds,
 - medical-capable models to gather source-bound candidate facts for governance,
 - VAMS to recall prior boundary failures,

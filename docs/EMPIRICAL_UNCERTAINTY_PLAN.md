@@ -8,8 +8,9 @@ the deterministic safety shell.
 The question is:
 
 ```text
-Given the JRE uncertainty graph, Black Swan guardrails, and DHSE score,
-what empirical boundary patterns predict PTR-B or review yield?
+Given the JRE uncertainty graph, Black Swan guardrails, DHSE score, and future
+Any Dispo destination features, what empirical boundary patterns predict
+disposition review yield?
 ```
 
 The output is not clinical authorization. It is a calibrated review signal that
@@ -83,7 +84,8 @@ Run models in this order:
 
 ## Imbalanced Data Rules
 
-PTR-B will likely be uncommon. Use metrics that respect rare positives:
+PTR-B and admission-benefit review labels will likely be uncommon. Use metrics
+that respect rare positives:
 
 - AUPRC
 - precision at review budget
@@ -98,6 +100,25 @@ accurate and still be clinically useless.
 Use oversampling cautiously. Synthetic minority rows can create plausible but
 clinically incoherent cases unless constrained by the uncertainty graph and
 reviewed by governance.
+
+## Any Dispo Extension
+
+The empirical layer should generalize from `DHSE-EMPIRICAL-v0.1` to a future
+`ANY-DISPO-EMPIRICAL-v0.1` contract. DHSE remains the first implemented feature
+source. The broader contract should add text-free fields for:
+
+- proposed disposition and level-of-care category,
+- destination capability gaps,
+- deterministic blocker counts,
+- lower-acuity failure labels,
+- observed inpatient-need labels,
+- low observed inpatient-need review labels,
+- admission-benefit uncertainty labels,
+- clinician adjudication labels and confidence.
+
+Model results must be reported separately by disposition direction. A model that
+captures unsafe discharge cases does not automatically validate the inverse
+admission-benefit head.
 
 ## TabPFN Role
 

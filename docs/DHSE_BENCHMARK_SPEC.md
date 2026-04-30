@@ -4,6 +4,11 @@
 
 Disposition Handoff Sufficiency Benchmark (DHSB)
 
+DHSB is the first implemented benchmark under the broader Any Dispo program.
+It measures one direction: ED disposition representation sufficiency for
+admitted patients. Separate Any Dispo benchmarks will measure lower-acuity
+failure, admission-benefit uncertainty, and level-of-care mismatch.
+
 ## Primary Label
 
 Post-Disposition Trajectory Revision with Burden (PTR-B)
