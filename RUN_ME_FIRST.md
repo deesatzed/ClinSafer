@@ -104,6 +104,27 @@ artifacts/dhse_summary.json
 artifacts/dhse_cases.csv
 ```
 
+## Empirical uncertainty feature export
+
+```bash
+python scripts/export_dhse_empirical_features.py \
+  --input data/dhse_synthetic_benchmark.jsonl \
+  --input-format jsonl \
+  --output-csv artifacts/dhse_empirical_features.csv \
+  --manifest-json artifacts/dhse_empirical_features_manifest.json \
+  --review-fraction 0.5
+```
+
+Open:
+
+```text
+artifacts/dhse_empirical_features.csv
+artifacts/dhse_empirical_features_manifest.json
+```
+
+For TabPFN or medical-knowledge APIs, place keys only in `.env` or deployment
+secrets. Do not commit real keys.
+
 ## Tests
 
 ```bash
@@ -130,6 +151,8 @@ Main files to show in an interview:
 - `docs/DHSE_CANONICAL_CSV_SCHEMA.md`
 - `docs/DHSE_REAL_DATA_PILOT_RUNBOOK.md`
 - `docs/DHSE_ADJUDICATION_CODEBOOK.md`
+- `docs/EMPIRICAL_UNCERTAINTY_PLAN.md`
+- `docs/GOVERNED_MEDICAL_KNOWLEDGE_LAYER.md`
 - `interactive_demo.py`
 - `artifacts/provider_dashboard_sample.html`
 - `artifacts/black_swan_dashboard.html`

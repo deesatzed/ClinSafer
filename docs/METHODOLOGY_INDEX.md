@@ -1,6 +1,6 @@
 # Methodology Index
 
-This repository now contains three related but distinct methodology layers.
+This repository now contains five related but distinct methodology layers.
 
 ## 1. Judgment Readiness
 
@@ -78,6 +78,46 @@ Method:
   full reports, compact metrics, case-level outputs, a manifest, and a methods
   snapshot.
 
+## 4. Empirical Boundary Learning
+
+Primary files:
+
+- `jre/empirical_uncertainty.py`
+- `scripts/export_dhse_empirical_features.py`
+- `docs/EMPIRICAL_UNCERTAINTY_PLAN.md`
+
+Method:
+
+- Convert DHSE/JRE/BSG reports into a stable, text-free tabular feature
+  contract: `DHSE-EMPIRICAL-v0.1`.
+- Export DSI, graph summaries, guardrail assumptions, residual-risk fields, and
+  PTR-B labels for downstream calibrated models.
+- Benchmark imbalanced-data models by AUPRC, recall at review budget, precision
+  at review budget, and calibration rather than raw accuracy.
+- Treat TabPFN as a candidate empirical learner and not as the safety authority.
+- Add selective/conformal thresholds so the empirical layer can say "review" or
+  "abstain," but cannot override deterministic guardrails.
+
+## 5. Governed Medical Knowledge Acquisition
+
+Primary files:
+
+- `docs/GOVERNED_MEDICAL_KNOWLEDGE_LAYER.md`
+- `jre/templates.py`
+- `jre/black_swan.py`
+
+Method:
+
+- Accept that red flags, standards, objective-data requirements, and thresholds
+  require medical expert knowledge.
+- Use medical-capable models only for narrow, atomic guideline questions and
+  candidate fact gathering.
+- Require source citation, prompt/answer hashing, clinician or qualified-reviewer
+  approval, versioning, rollback, and monitoring before any candidate becomes a
+  production rule.
+- Preserve the invariant that retrieved clinical facts may raise review pressure
+  but may not autonomously clear a case.
+
 ## Shared Safety Invariants
 
 - The LLM is advisory, not the safety authority.
@@ -86,3 +126,6 @@ Method:
 - Outcome fields are not allowed to leak into snapshot scoring.
 - Memory or prior cases may suggest review targets; they may not authorize care.
 - Governance is required before learned rules change production behavior.
+- Empirical models and retrieved medical facts can make the system more
+  conservative before validation; they cannot loosen autonomy boundaries without
+  governance and outcome evidence.

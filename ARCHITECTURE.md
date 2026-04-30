@@ -48,6 +48,41 @@ Post-discharge PTR-B label
 DHSB benchmark metrics, stratification, calibration, and error analysis
 ```
 
+Empirical boundary-learning path:
+
+```text
+DHSE/JRE/BSG reports
+        ↓
+Text-free empirical feature contract
+        ↓
+Imbalanced tabular learners
+  (calibrated logistic, GBDT, balanced forest, TabPFN)
+        ↓
+Calibration + selective/conformal threshold
+        ↓
+Review priority / abstention signal
+        ↓
+Most-restrictive autonomy governor
+```
+
+Governed medical-knowledge acquisition path:
+
+```text
+Atomic clinical/guideline question
+        ↓
+Configured medical-capable model candidate answer
+        ↓
+Source citation + prompt/answer hash
+        ↓
+Qualified human review
+        ↓
+Versioned rule/template candidate
+        ↓
+Simulation, DHSE outcome checks, monitoring
+        ↓
+Governance promotion or rejection
+```
+
 ## Design influence from prior builds
 
 This prototype borrows three patterns from the user’s prior software systems:
@@ -326,6 +361,41 @@ notes, post-disposition labs/imaging, ICU transfer outcome, LOS, mortality, and
 readmission are labels only and must not influence ED snapshot scoring.
 The CSV validator fails closed on non-canonical post-disposition-looking columns
 and on outcome-looking keys hidden inside snapshot JSON fields.
+
+## Empirical uncertainty layer
+
+The empirical layer is implemented as a feature-export foundation, not a
+clinical clearance model.
+
+Files:
+
+- `jre/empirical_uncertainty.py`
+- `scripts/export_dhse_empirical_features.py`
+- `docs/EMPIRICAL_UNCERTAINTY_PLAN.md`
+
+It exports a `DHSE-EMPIRICAL-v0.1` feature contract for imbalanced-data models,
+TabPFN, tuned GBDT, and selective/conformal wrappers. The feature contract
+excludes raw notes, diagnoses, dialogue text, evidence snippets, questions, and
+answers.
+
+The empirical layer can raise review priority, estimate review-budget capture,
+and abstain when calibrated uncertainty is too high. It cannot clear a
+deterministic guardrail.
+
+## Governed medical knowledge layer
+
+The system acknowledges that red flags, standards, risk thresholds, and
+objective-data requirements require medical expert knowledge. The counter is to
+make that knowledge path explicit and auditable:
+
+- use medical-capable models only for narrow clinical/guideline questions;
+- require citations and prompt/answer hashes;
+- require qualified human review before promotion;
+- version and monitor every promoted rule;
+- allow candidate knowledge to increase caution before validation, not decrease
+  it.
+
+See `docs/GOVERNED_MEDICAL_KNOWLEDGE_LAYER.md`.
 
 ## Mitigation architecture
 

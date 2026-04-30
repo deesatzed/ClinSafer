@@ -44,6 +44,16 @@ from .dhse_contract import (
     field_role_report,
     schema_summary,
 )
+from .empirical_uncertainty import (
+    EMPIRICAL_FEATURE_CONTRACT_VERSION,
+    empirical_feature_contract,
+    feature_row_from_report,
+    feature_rows_from_reports,
+    feature_rows_from_run,
+    positive_recall_floor_threshold,
+    review_budget_curve,
+    write_feature_csv,
+)
 from .synthetic_data import BASE_CASES
 
 __all__ = [
@@ -92,5 +102,13 @@ __all__ = [
     "DhseColumnSpec",
     "field_role_report",
     "schema_summary",
+    "EMPIRICAL_FEATURE_CONTRACT_VERSION",
+    "empirical_feature_contract",
+    "feature_row_from_report",
+    "feature_rows_from_reports",
+    "feature_rows_from_run",
+    "positive_recall_floor_threshold",
+    "review_budget_curve",
+    "write_feature_csv",
     "BASE_CASES",
 ]

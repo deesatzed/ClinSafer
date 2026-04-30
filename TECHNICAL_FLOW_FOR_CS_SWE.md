@@ -1009,12 +1009,17 @@ A strong final architecture would be:
 15. Run BSG assumption-sufficiency ensemble.
 16. For retrospective ED admissions, run DHSE disposition sufficiency scoring
     and PTR-B benchmark analysis.
-17. Deposit signals into stigmergic boundary trace.
-18. Encode boundary signature for VAMS recall.
-19. Recall near-miss analogues and complete missing pattern.
-20. Generate falsifiers and next-best questions.
-21. Apply most-restrictive autonomy governor.
-22. Render provider/executive UX:
+17. Export text-free empirical features for imbalanced tabular modeling,
+    TabPFN/GBDT benchmarking, calibration, and selective/conformal review
+    thresholds.
+18. Ask governed medical-knowledge questions only as atomic guideline/red-flag
+    candidate retrieval, with citations and human review before promotion.
+19. Deposit signals into stigmergic boundary trace.
+20. Encode boundary signature for VAMS recall.
+21. Recall near-miss analogues and complete missing pattern.
+22. Generate falsifiers and next-best questions.
+23. Apply most-restrictive autonomy governor.
+24. Render provider/executive UX:
     - statement vs fact
     - input coverage audit
     - model/role provenance
@@ -1025,9 +1030,9 @@ A strong final architecture would be:
     - next questions
     - operational value
     - mitigation plan
-23. Capture clinician feedback.
-24. Update experience memory, VAMS acceptance, trace priors.
-25. Queue proposed template/rule changes for governance.
+25. Capture clinician feedback.
+26. Update experience memory, VAMS acceptance, trace priors.
+27. Queue proposed template/rule changes for governance.
 ```
 
 ## Technical Thesis
@@ -1043,9 +1048,21 @@ score only ED-disposition-time information, label only with post-discharge
 trajectory revision plus burden, and report objective metrics instead of
 subjective handoff-quality ratings.
 
+The empirical uncertainty layer adds a model-ready tabular contract for
+calibrated imbalanced learning. TabPFN, tuned GBDT, and transparent baselines can
+estimate PTR-B/review yield, but their outputs only raise review priority or
+abstain unless governed evidence promotes them.
+
+The governed medical knowledge layer counters the "you still need medical
+expertise" critique by making expert knowledge explicit: atomic model-assisted
+guideline questions, source citation, prompt/answer hashing, human review,
+versioning, rollback, and monitoring.
+
 The next version uses:
 
 - AI to propose case-specific nodes, ranges, and distributions,
+- empirical feature exports to calibrate review thresholds,
+- medical-capable models to gather source-bound candidate facts for governance,
 - VAMS to recall prior boundary failures,
 - stigmergic traces to accumulate weak signals over time,
 - deterministic validators and governance to decide what actually changes autonomy.

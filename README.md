@@ -58,6 +58,8 @@ See:
 
 ```text
 docs/CLINICAL_UNCERTAINTY_GRAPH.md
+docs/EMPIRICAL_UNCERTAINTY_PLAN.md
+docs/GOVERNED_MEDICAL_KNOWLEDGE_LAYER.md
 ```
 
 ### MUD → CLEAR
@@ -216,6 +218,7 @@ jre/experience.py      Experiential learning memory for distortion priors and qu
 jre/synthetic_data.py  Synthetic cases and dataset generator
 jre/black_swan.py     Black Swan Guardrail Layer, assumption register, autonomy caps
 jre/disposition_handoff.py  ED disposition handoff sufficiency scoring and PTR-B labeling
+jre/empirical_uncertainty.py  Text-free empirical feature contract for TabPFN/GBDT/conformal modeling
 MITIGATION_PLAN.md    Stigmergic/VAMS mitigation plan and demo update path
 TELEMEDICINE_TOP_25_COVERAGE.md  Mapping of common telemedicine reasons to templates
 demo.py               CLI and HTML dashboard generator
@@ -312,6 +315,21 @@ python scripts/run_dhse_benchmark.py \
   --case-csv artifacts/dhse_cases.csv
 ```
 
+Export empirical uncertainty features for imbalanced modeling, TabPFN, and
+selective/conformal wrappers:
+
+```bash
+python scripts/export_dhse_empirical_features.py \
+  --input data/dhse_synthetic_benchmark.jsonl \
+  --input-format jsonl \
+  --output-csv artifacts/dhse_empirical_features.csv \
+  --manifest-json artifacts/dhse_empirical_features_manifest.json \
+  --review-fraction 0.5
+```
+
+Use `TABPFN_API_KEY` only from `.env`, Fly secrets, or another secret manager.
+Do not commit real keys.
+
 ---
 
 ## How this maps to a real product
@@ -329,9 +347,15 @@ The safety system would be:
 6. **Experience memory** — learns which questions expose hidden risk in which patient/context patterns.
 7. **Stigmergic boundary trace** — keeps unresolved claims, source conflicts, stale data, social/workflow pressure, and feedback from disappearing between turns.
 8. **VAMS-style near-miss recall** — recalls prior boundary failures from partial case signatures and suggests missing nodes or falsifiers.
-9. **Governance queue** — promotes learned rules/templates only after validation, simulation, and review.
-10. **Arbiter** — decides whether the case is ready, needs clarification, needs objective data, or must escalate.
-11. **Provider UI** — shows the boundary map and rule trace, not just a note summary.
+9. **Empirical boundary learner** — uses DHSE feature exports, imbalanced-data
+   metrics, TabPFN/GBDT baselines, calibration, and selective/conformal
+   thresholds to learn where review is needed.
+10. **Governed medical knowledge layer** — asks narrow guideline/red-flag
+    questions, stores source-bound candidate facts, and promotes only reviewed
+    rules.
+11. **Governance queue** — promotes learned rules/templates only after validation, simulation, and review.
+12. **Arbiter** — decides whether the case is ready, needs clarification, needs objective data, or must escalate.
+13. **Provider UI** — shows the boundary map and rule trace, not just a note summary.
 
 This is designed to be inserted into a telehealth or autonomous-intake pipeline before refills, triage, symptom assessment, or chronic disease check-ins.
 
