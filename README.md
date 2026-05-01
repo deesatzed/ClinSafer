@@ -27,7 +27,7 @@ JRE evaluates a clinical intake transcript and returns:
 5. **Provider-facing boundary map** — what is known, what is not known, and what cannot be known remotely.
 6. **Rule traces** — why the module flagged something, for governance and trust.
 7. **Black Swan Guardrail state** — whether assumptions failed and how far autonomy is allowed to proceed.
-8. **Mitigation plan** — immediate controls plus future learning hooks for boundary traces, VAMS-style near-miss recall, governed template promotion, and churn/routing reduction.
+8. **Mitigation plan** — immediate controls plus implemented advisory boundary traces, VAMS-style near-miss recall, governed template promotion, and churn/routing reduction.
 
 ---
 
@@ -220,6 +220,8 @@ jre/models.py          Data models
 jre/templates.py       Domain-specific safety slots and red-flag patterns
 jre/engine.py          Judgment Readiness scoring, MUD map, CLEAR questions
 jre/experience.py      Experiential learning memory for distortion priors and question yield
+jre/boundary_trace.py  Stigmergic-style trace field for unresolved boundary signals
+jre/associative_memory.py  VAMS-style advisory near-miss recall from sparse signatures
 jre/synthetic_data.py  Synthetic cases and dataset generator
 jre/black_swan.py     Black Swan Guardrail Layer, assumption register, autonomy caps
 jre/disposition_handoff.py  First implemented Any Dispo head: ED disposition handoff sufficiency scoring and PTR-B labeling
@@ -378,8 +380,8 @@ The safety system would be:
 4. **Reasoning integrity guard** — audits for anchoring, premature closure, confirmation bias, search satisficing, omission bias, diagnostic momentum, framing risk, and overconfidence.
 5. **Uncertainty model** — confidence, missingness, distortion, and source reliability.
 6. **Experience memory** — learns which questions expose hidden risk in which patient/context patterns.
-7. **Stigmergic boundary trace** — keeps unresolved claims, source conflicts, stale data, social/workflow pressure, and feedback from disappearing between turns.
-8. **VAMS-style near-miss recall** — recalls prior boundary failures from partial case signatures and suggests missing nodes or falsifiers.
+7. **Stigmergic boundary trace** — implemented as an in-memory `BoundaryTraceField` that keeps unresolved claims, source conflicts, stale data, social/workflow pressure, and feedback from disappearing between turns.
+8. **VAMS-style near-miss recall** — implemented as an in-memory `NearMissMemory` that recalls prior boundary failures from partial case signatures and suggests missing nodes or falsifiers.
 9. **Any Dispo disposition governor** — audits whether the proposed destination
    and level of monitoring are justified, whether a lower-acuity path is blocked,
    whether admission benefit is uncertain, and whether level of care is
@@ -397,10 +399,11 @@ The safety system would be:
 This is designed to be inserted into a telehealth or autonomous-intake pipeline before refills, triage, symptom assessment, or chronic disease check-ins.
 
 The current demo implements transcript intake, input coverage auditing,
-deterministic controls, bounded multi-role LLM candidate analysis, and visible
-mitigation planning. The stigmergic trace and VAMS memory are documented as the
-next persistence/recall layer, with memory output constrained to advisory
-candidate risks/questions/falsifiers rather than clinical authorization.
+deterministic controls, bounded multi-role LLM candidate analysis, visible
+mitigation planning, and foundational in-memory trace/near-miss recall modules.
+The next step is wiring these modules into the Any Dispo review path, API, and
+UI while preserving the invariant that memory output is advisory candidate
+risks/questions/falsifiers rather than clinical authorization.
 
 ---
 

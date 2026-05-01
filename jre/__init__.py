@@ -1,5 +1,24 @@
 from .engine import JudgmentReadinessEngine, report_to_markdown, case_from_dict
 from .experience import ExperienceMemory, ExperienceEvent, OutcomeFeedback
+from .associative_memory import (
+    ADVISORY_AUTHORITY,
+    NearMissMemory,
+    NearMissPattern,
+    RecallResult,
+)
+from .boundary_trace import (
+    ACTIVE_STATUS,
+    EXPIRED_STATUS,
+    RETRACTED_STATUS,
+    BoundaryTraceField,
+    BoundaryTracePatch,
+    TRACE_CLAIM,
+    TRACE_CONSTRAINT,
+    TRACE_OUTCOME,
+    TRACE_QUESTION,
+    TRACE_RETRACTION,
+    TRACE_SIGNAL,
+)
 from .models import (
     CaseInput, PatientContext, Statement,
     ReadinessScores, Finding, Observation,
@@ -63,6 +82,21 @@ __all__ = [
     "ExperienceMemory",
     "ExperienceEvent",
     "OutcomeFeedback",
+    "ADVISORY_AUTHORITY",
+    "NearMissMemory",
+    "NearMissPattern",
+    "RecallResult",
+    "ACTIVE_STATUS",
+    "EXPIRED_STATUS",
+    "RETRACTED_STATUS",
+    "BoundaryTraceField",
+    "BoundaryTracePatch",
+    "TRACE_CLAIM",
+    "TRACE_CONSTRAINT",
+    "TRACE_OUTCOME",
+    "TRACE_QUESTION",
+    "TRACE_RETRACTION",
+    "TRACE_SIGNAL",
     "CaseInput",
     "PatientContext",
     "Statement",

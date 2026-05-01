@@ -1,6 +1,6 @@
 # Next Steps TODO
 
-Last updated: 2026-04-30
+Last updated: 2026-05-01
 
 Current repo state at creation:
 
@@ -32,6 +32,10 @@ What is real now:
 - Validate a real EHR export schema.
 - Generate a reproducible study packet.
 - Export text-free tabular features for downstream imbalanced modeling.
+- Deposit and query advisory boundary traces with support, opposition, decay,
+  and retraction.
+- Recall advisory near-miss patterns from sparse signatures with
+  strengthen/weaken feedback.
 - Prevent empirical models or LLM-retrieved medical facts from clearing deterministic guardrails without governance.
 - Explain why the inverse problem is a review-prioritization and counterfactual
   admission-benefit problem, not a simple flipped label.
@@ -45,14 +49,25 @@ What is real now:
    - Never require a committed API key; read `TABPFN_API_KEY` from env only.
    - Initial code target: `scripts/benchmark_dhse_models.py`.
 
-2. Define the Any Dispo data contract.
+2. Integrate the new boundary trace and near-miss recall foundations.
+   - Source modules: `jre/boundary_trace.py` and `jre/associative_memory.py`.
+   - Wire advisory trace pressure into `AnyDispositionReviewReport` once
+     `jre/any_disposition.py` exists.
+   - Add API/demo fields for trace deposits, recalled memory IDs, missing
+     nodes, falsifiers, and pattern-completion keys.
+   - Keep memory output advisory only; no memory-only authorization, no
+     automatic downgrade of guardrails.
+   - Persistence is a later step after datastore, PHI/deidentification,
+     retention, and audit policies are chosen.
+
+3. Define the Any Dispo data contract.
    - Add `docs/ANY_DISPO_CANONICAL_CSV_SCHEMA.md`.
    - Add `jre/any_dispo_contract.py`.
    - Add `data/any_dispo_column_mapping_template.csv`.
    - Add `sql/any_dispo_cohort_extract_template.sql`.
    - Preserve the DHSE leakage rule: decision-time fields are inputs; hospital-course and post-disposition fields are labels only.
 
-3. Build the admission-benefit uncertainty head.
+4. Build the admission-benefit uncertainty head.
    - Add `jre/any_disposition.py`.
    - Add deterministic blockers for lower-acuity candidate status.
    - Emit labels/signals such as `low_observed_inpatient_need`,
@@ -60,64 +75,65 @@ What is real now:
      `level_of_care_mismatch`.
    - Never emit "safe to discharge" or "unnecessary admission".
 
-4. Add Any Dispo validators and sample fixtures.
+5. Add Any Dispo validators and sample fixtures.
    - Add `scripts/validate_any_dispo_export.py`.
    - Add `data/sample_any_dispo_ehr_export.csv`.
    - Validate encounter timing, proposed disposition, actual disposition,
      destination capability, label fields, and adjudication fields.
    - Fail closed on post-decision fields placed in snapshot columns.
 
-5. Export Any Dispo empirical features.
+6. Export Any Dispo empirical features.
    - Add `scripts/export_any_dispo_features.py`.
    - Include JRE graph summaries, BSG state, destination capability gaps,
-     blocker counts, DSI where available, and text-free label fields.
+     blocker counts, trace pressure summaries, near-miss recall counts, DSI
+     where available, and text-free label fields.
    - Exclude raw notes, diagnosis text, evidence snippets, and questions.
 
-6. Benchmark Any Dispo models.
+7. Benchmark Any Dispo models.
    - Add `scripts/benchmark_any_dispo_models.py`.
    - Compare transparent baselines, imbalanced models, GBDT, balanced forest,
      TabPFN, and later TabPFN-HPO.
    - Report lower-acuity failure capture and low observed inpatient-need review
      yield separately.
 
-7. Add calibration and selective prediction.
+8. Add calibration and selective prediction.
    - Add isotonic/Platt calibration where dependencies allow.
    - Add temporal split support.
    - Add review threshold calibrated to positive recall.
    - Add abstention/review output when uncertainty is too wide.
 
-8. Add conformal/risk-control layer.
+9. Add conformal/risk-control layer.
    - Start with split calibration over PTR-B risk.
    - Report coverage, miss-rate bound, reviewed fraction, and false-negative audit.
    - Preserve invariant: conformal output can raise review priority, not clear guardrails.
 
-9. Add governed medical knowledge registry.
+10. Add governed medical knowledge registry.
    - Define a structured JSONL or CSV format for candidate clinical facts.
    - Include source citation, model name, prompt hash, answer hash, reviewer status, effective date, rollback notes, and monitoring plan.
    - Keep all candidates non-production until reviewed.
 
-10. Add `scripts/query_medical_knowledge.py`.
+11. Add `scripts/query_medical_knowledge.py`.
    - Atomic clinical/guideline questions only.
    - No PHI.
    - Read model/API key from env (`XAI_API_KEY`, `GROK_MEDICAL_KNOWLEDGE_MODEL`, or OpenRouter equivalent).
    - Store candidate facts with hashes and citations.
    - Do not auto-edit `jre/templates.py` or `jre/black_swan.py`.
 
-11. Add real-data pilot support.
+12. Add real-data pilot support.
    - Run `scripts/validate_dhse_export.py` on a larger canonical CSV.
    - Generate a study packet with `scripts/create_dhse_study_packet.py`.
    - Export empirical features.
    - Run model benchmarks.
    - Write pilot readout: cohort flow, label prevalence, leakage review, model results, and error analysis.
 
-12. Add browser E2E tests for interactive demo.
+13. Add browser E2E tests for interactive demo.
    - Transcript paste.
    - Analyze flow.
    - Clinical Uncertainty Graph section rendering.
    - Final Recommendations page.
    - LLM unavailable/retry behavior.
 
-13. Deploy latest app if needed.
+14. Deploy latest app if needed.
    - Confirm local tests.
    - Confirm secrets are present.
    - Deploy to Fly.
@@ -141,6 +157,10 @@ Collect decision-time inputs:
 - destination capability: serial vitals, oxygen, IV therapy, telemetry, urgent
   reassessment, procedure/imaging access, medication reconciliation, caregiver,
   and confirmed follow-up
+- trace keys suitable for deidentified memory: unresolved blockers, source
+  conflicts, stale objective data, destination capability gaps, follow-up
+  reliability failures, social/communication constraints, and prior near-miss
+  analogue IDs when reviewed
 
 Collect post-disposition labels:
 
@@ -154,7 +174,8 @@ Collect post-disposition labels:
 Collect adjudication fields:
 
 - reviewer role, review time, label, confidence, reason codes, missing-data
-  reason, and whether the model signal would have changed review priority
+  reason, whether a trace/memory recall was useful or misleading, and whether
+  the model signal would have changed review priority
 
 ## Test TODO
 
@@ -171,6 +192,10 @@ Collect adjudication fields:
   inpatient-need cases.
 - Retrieved medical facts for accuracy, source quality, and drift over time.
 - New promoted rules for alert fatigue, missed sentinels, and subgroup effects.
+- Boundary trace behavior under repeated weak signals, resolved conflicts,
+  stale evidence, and retractions.
+- Near-miss recall precision, useful-recall rate, rejected-analogue weakening,
+  and false analogue audit.
 
 ## Strategic Positioning
 
@@ -200,6 +225,7 @@ Answer to the Any Dispo pivot:
 ## Immediate Next Command Set
 
 ```bash
+python -m pytest tests/test_boundary_trace.py tests/test_associative_memory.py -q
 python -m pytest -q
 python scripts/export_dhse_empirical_features.py \
   --input data/dhse_synthetic_benchmark.jsonl \

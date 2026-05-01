@@ -89,8 +89,8 @@ Example:
 
 The updated mitigation plan adds two learning ideas from local repos:
 
-- `hcc_synth_1`: stigmergic boundary traces, where unresolved signals persist, decay, combine, and can escalate over time.
-- `vam-satzed`: VAMS-style sparse associative memory, where partial case signatures recall prior near misses.
+- `rustigmergic-logswarm-engine`: stigmergic boundary traces, where unresolved signals persist, decay, combine, and can escalate over time.
+- `Vamplify-Claude`: VAMS-style associative action memory, where partial case signatures recall prior near misses and complete missing pattern keys.
 
 Interview framing:
 
@@ -105,6 +105,11 @@ This does not mean memory practices medicine. Memory proposes:
 - and governance-review candidates.
 
 The expert system still decides what is allowed.
+
+Implemented foundation:
+
+- `jre/boundary_trace.py`
+- `jre/associative_memory.py`
 
 ### 5. Expert-system + LLM hybrid
 

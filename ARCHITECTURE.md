@@ -184,7 +184,9 @@ automation.
 
 ### Stigmergic boundary traces
 
-The next mitigation layer borrows from the local `hcc_synth_1` repo. Instead of treating every encounter as stateless text, unresolved signals should leave bounded traces:
+The implemented foundation borrows from the local
+`rustigmergic-logswarm-engine` repo. Instead of treating every encounter as
+stateless text, unresolved signals can leave bounded traces:
 
 - patient claims and denials,
 - objective evidence and timestamps,
@@ -193,20 +195,27 @@ The next mitigation layer borrows from the local `hcc_synth_1` repo. Instead of 
 - temporal staleness,
 - outcome feedback.
 
-Each trace type should decay at a different rate. Stale objective evidence should lose force quickly; unresolved source conflict, nonresponse after risk, and confirmed near-miss feedback should persist longer.
+`jre/boundary_trace.py` implements an in-memory `BoundaryTraceField` with typed
+patches, symbolic keys, support, opposition, decay, search, retraction, and
+risk-pressure summaries. Each trace type can decay at a different rate. Stale
+objective evidence can lose force quickly; unresolved source conflict,
+nonresponse after risk, and confirmed near-miss feedback can persist longer.
 
 ### VAMS-style associative memory
 
-The next memory layer borrows from the local `vam-satzed` repo:
+The implemented foundation borrows from the local `Vamplify-Claude` repo:
 
-- sparse Hopfield attractor memory,
 - Hebbian strengthening for confirmed recalls,
 - anti-Hebbian weakening for rejected recalls,
 - associative recall from partial cues,
 - pattern completion,
 - typed memory edges.
 
-In this app, VAMS-style memory should recall near-miss boundary shapes, not make clinical decisions. A recalled memory can suggest missing nodes, falsifiers, and clarification questions. Deterministic validators still decide whether autonomy is capped.
+`jre/associative_memory.py` implements an in-memory `NearMissMemory` that
+recalls near-miss boundary shapes from sparse signatures. A recalled memory can
+suggest missing nodes, falsifiers, clarification questions, and pattern
+completion keys. Deterministic validators still decide whether autonomy is
+capped.
 
 ## Core objects
 
@@ -287,6 +296,22 @@ lower-acuity risk signal, admission-benefit uncertainty signal, level-of-care
 mismatch signal, empirical review priority, conformal/selective abstention state,
 and clinician-review recommendation.
 
+### BoundaryTraceField
+
+Implemented advisory trace substrate for unresolved boundary signals. It stores
+typed patches such as claims, constraints, signals, questions, outcomes, and
+retractions. Patches carry symbolic keys, confidence, support mass, opposition
+mass, decay rate, evidence IDs, and status. The field can search traces,
+reinforce or oppose them, decay stale mass, retract resolved signals, and
+summarize residual risk pressure.
+
+### NearMissMemory
+
+Implemented advisory associative memory for deidentified boundary signatures.
+It stores sparse signature keys with missing nodes, falsifiers, and recommended
+review actions. Partial signatures recall similar near-miss patterns by overlap.
+Confirmed useful recalls are strengthened; rejected recalls are weakened.
+
 ## Judgment Readiness Index
 
 The prototype combines:
@@ -321,8 +346,10 @@ The deployed app now enforces these demo-level guarantees:
 1. Add specialty-specific pathway packs.
 2. Connect to EHR/pharmacy/device sources to verify objective data.
 3. Use outcome feedback to update distortion priors and question-yield estimates.
-4. Add `BoundaryTraceField` and `BoundarySelfModel` for stigmergic mitigation of repeated weak signals.
-5. Add VAMS-style `AssociativeCaseMemory` for near-miss recall from sparse case signatures.
+4. Persist `BoundaryTraceField` and `NearMissMemory` beyond process memory after
+   datastore, retention, and deidentification rules are chosen.
+5. Wire boundary traces and near-miss recall into Any Dispo review reports,
+   API output, and the clinician-facing UI.
 6. Add falsifier planning: what would disprove danger, what would disprove reassurance, and what evidence changes the autonomy cap.
 7. Add governed AI-generated dynamic templates: LLM proposes nodes, ranges, distributions, and rules; validators decide what can execute.
 8. Add Any Dispo schema and review heads for lower-acuity risk, admission-benefit
@@ -487,7 +514,7 @@ Immediate action cap / verification / escalation
         ↓
 BoundaryTraceField deposit
         ↓
-VAMS near-miss recall
+NearMissMemory advisory recall
         ↓
 Candidate missing nodes and falsifiers
         ↓

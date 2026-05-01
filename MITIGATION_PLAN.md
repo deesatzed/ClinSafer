@@ -2,7 +2,9 @@
 
 ## Purpose
 
-This plan updates the demo and implementation direction after reviewing the local `hcc_synth_1` stigmergic repo and `vam-satzed` VAMS memory repo.
+This plan updates the demo and implementation direction after reviewing the
+local `rustigmergic-logswarm-engine` stigmergic trace repo and
+`Vamplify-Claude` VAMS/action-memory repo.
 
 The mitigation goal is not to make the app a more aggressive AI doctor. The goal is to make the system better at:
 
@@ -48,7 +50,7 @@ Safety boundary:
 
 ### 2. Stigmergic Boundary Trace
 
-Borrowed from `hcc_synth_1`:
+Borrowed from `rustigmergic-logswarm-engine`:
 
 - multi-region shared trace field,
 - different decay rates by signal type,
@@ -72,9 +74,14 @@ Mitigation role:
 
 > Stop weak but repeated uncertainty signals from disappearing between turns.
 
+Implemented foundation:
+
+- `jre/boundary_trace.py`
+- `tests/test_boundary_trace.py`
+
 ### 3. Boundary Self-Model
 
-Borrowed from `hcc_synth_1` patient self-modeling:
+Future related extension, not implemented in this pass:
 
 - online baselines,
 - Welford mean/variance,
@@ -99,7 +106,7 @@ Mitigation role:
 
 ### 4. Falsifier Planning
 
-Borrowed from `hcc_synth_1` falsifier engine:
+Future related extension, not implemented in this pass:
 
 - generate dangerous hypothesis,
 - generate plausible alternatives,
@@ -119,7 +126,7 @@ What Would Change The Decision?
 
 ### 5. VAMS Near-Miss Recall
 
-Borrowed from `vam-satzed`:
+Borrowed from `Vamplify-Claude`:
 
 - sparse Hopfield attractor memory,
 - Hebbian strengthening,
@@ -150,6 +157,11 @@ Safety boundary:
 - Memory-only recall cannot create a T0/T1 hard stop without deterministic support.
 - Every recalled analogue needs confidence, evidence, and provenance.
 - PHI must be excluded or de-identified.
+
+Implemented foundation:
+
+- `jre/associative_memory.py`
+- `tests/test_associative_memory.py`
 
 ### 6. Governed Template Promotion
 
@@ -204,9 +216,9 @@ The interview demo should show:
 4. Autonomy cap.
 5. Next best question.
 6. Mitigation plan.
-7. Future memory/tracing upgrade:
-   - stigmergic boundary trace,
-   - VAMS near-miss recall,
+7. Foundational memory/tracing layer:
+   - implemented stigmergic boundary trace,
+   - implemented VAMS-style near-miss recall,
    - governed template promotion.
 
 The app now includes a `Mitigation Plan` analysis section in `interactive_demo.py`.
@@ -240,8 +252,8 @@ Expected proof behavior:
 1. Keep deterministic controls as the production safety base.
 2. Add visible mitigation planning to the demo.
 3. Add a deterministic `ClinicalBoundaryEncoder`.
-4. Seed synthetic near-miss memories for VAMS-style recall.
-5. Add `BoundaryTraceField` for per-case and cross-case learning traces.
+4. Seed synthetic near-miss memories for VAMS-style recall in the Any Dispo path.
+5. Wire `BoundaryTraceField` into per-case and cross-case review traces.
 6. Add falsifier planning.
 7. Add clinician feedback capture tied to memory acceptance/rejection.
 8. Add governance queue for proposed rules/templates.

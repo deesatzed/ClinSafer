@@ -1,6 +1,6 @@
 # Methodology Index
 
-This repository now contains six related but distinct methodology layers.
+This repository now contains seven related but distinct methodology layers.
 
 ## 1. Judgment Readiness
 
@@ -114,7 +114,31 @@ Method:
   full reports, compact metrics, case-level outputs, a manifest, and a methods
   snapshot.
 
-## 5. Empirical Boundary Learning
+## 5. Boundary Trace And Near-Miss Recall
+
+Primary files:
+
+- `jre/boundary_trace.py`
+- `jre/associative_memory.py`
+- `ARCHITECTURE.md`
+- `MITIGATION_PLAN.md`
+
+Method:
+
+- Deposit unresolved claims, constraints, signals, questions, outcomes, and
+  retractions into a stigmergic-style trace field.
+- Carry symbolic keys, confidence, support, opposition, decay, evidence IDs,
+  and status so repeated weak signals do not disappear between turns.
+- Recall prior near-miss boundary shapes from sparse signatures using an
+  in-memory VAMS-style associative layer.
+- Use Hebbian strengthening for confirmed useful recalls and anti-Hebbian
+  weakening for rejected recalls.
+- Return only advisory missing nodes, falsifiers, review actions, and pattern
+  completion keys.
+- Keep all memory output downstream of deterministic JRE/BSG/Any Dispo
+  validators and governance.
+
+## 6. Empirical Boundary Learning
 
 Primary files:
 
@@ -134,7 +158,7 @@ Method:
 - Add selective/conformal thresholds so the empirical layer can say "review" or
   "abstain," but cannot override deterministic guardrails.
 
-## 6. Governed Medical Knowledge Acquisition
+## 7. Governed Medical Knowledge Acquisition
 
 Primary files:
 

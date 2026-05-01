@@ -113,6 +113,32 @@ Admitted/observed patient -> candidate for home, observation, or rapid outpatien
 pathway review?
 ```
 
+## Boundary Memory And Trace Layer
+
+The Any Dispo frame needs memory, but only as a source of review hypotheses.
+Two foundational modules now exist:
+
+- `jre/boundary_trace.py`: a stigmergic-style `BoundaryTraceField` adapted from
+  the `rustigmergic-logswarm-engine` pattern of patches, symbolic keys,
+  support/opposition, decay, and retraction.
+- `jre/associative_memory.py`: a VAMS-style `NearMissMemory` adapted from
+  `Vamplify-Claude` action-memory patterns: partial signature recall, pattern
+  completion, Hebbian strengthening, and anti-Hebbian weakening.
+
+For Any Dispo, these modules should capture:
+
+- unresolved lower-acuity blockers;
+- source conflicts and stale objective data;
+- destination capability gaps;
+- nonresponse or unreliable follow-up after risk;
+- low observed inpatient-only need signals;
+- recurring level-of-care mismatch patterns;
+- confirmed near misses and rejected false analogues.
+
+Memory output may add review pressure, missing nodes, falsifiers, and suggested
+review actions. It may not emit "safe to discharge," "unnecessary admission,"
+or any autonomous disposition order.
+
 ## Data Contract Direction
 
 Create a future `ANY-DISPO-CSV-v0.1` contract rather than forcing all cases into
@@ -316,15 +342,17 @@ Metrics:
 
 1. Preserve DHSE as the first implemented Any Dispo head.
 2. Add `docs/ANY_DISPOSITION_MODEL_PLAN.md` as the umbrella plan.
-3. Define `ANY-DISPO-CSV-v0.1` in a new schema doc.
-4. Add sample admitted/observed cohort fixture.
-5. Add `scripts/validate_any_dispo_export.py`.
-6. Add `jre/any_disposition.py` with destination capability and deterministic
+3. Implement foundational `BoundaryTraceField` and `NearMissMemory` modules.
+4. Define `ANY-DISPO-CSV-v0.1` in a new schema doc.
+5. Add sample admitted/observed cohort fixture.
+6. Add `scripts/validate_any_dispo_export.py`.
+7. Add `jre/any_disposition.py` with destination capability and deterministic
    blocker logic.
-7. Add `scripts/export_any_dispo_features.py`.
-8. Add `scripts/benchmark_any_dispo_models.py`.
-9. Add clinician adjudication codebook for any-dispo labels.
-10. Add a demo/API panel named `Any Dispo Review`, initially read-only and
+8. Add boundary trace and near-miss recall fields to Any Dispo reports.
+9. Add `scripts/export_any_dispo_features.py`.
+10. Add `scripts/benchmark_any_dispo_models.py`.
+11. Add clinician adjudication codebook for any-dispo labels.
+12. Add a demo/API panel named `Any Dispo Review`, initially read-only and
     retrospective.
 
 ## Pilot Readout
