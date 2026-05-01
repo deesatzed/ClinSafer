@@ -38,6 +38,9 @@ Decision-time snapshot
 Proposed disposition + destination capability map
   (home, observation, floor, telemetry, stepdown, ICU, transfer, SNF, rehab)
         ↓
+AnyDispositionReviewEngine
+  (hard blockers, capability gaps, admission-benefit uncertainty)
+        ↓
 Clinical uncertainty graph
         ↓
 Black Swan Guardrail assumption layer
@@ -290,11 +293,22 @@ factors, input limitations, and optional PTR-B label.
 
 ### AnyDispositionReviewReport
 
-Planned umbrella report for any proposed disposition. It should contain the
+Implemented umbrella report for any proposed disposition. It contains the
 proposed destination, deterministic blockers, destination capability gaps,
-lower-acuity risk signal, admission-benefit uncertainty signal, level-of-care
-mismatch signal, empirical review priority, conformal/selective abstention state,
-and clinician-review recommendation.
+admission-benefit uncertainty signals, missing evidence, trace summary,
+near-miss memory suggestions, signature keys, review priority, and a conservative
+review state.
+
+Implemented states:
+
+- `LOWER_ACUITY_BLOCKED`
+- `ADMISSION_BENEFIT_UNCERTAIN`
+- `LEVEL_OF_CARE_MISMATCH`
+- `INSUFFICIENT_EVIDENCE`
+- `REVIEW_RECOMMENDED`
+- `NO_REVIEW_SIGNAL`
+
+These states route review. They do not order a destination.
 
 ### BoundaryTraceField
 
@@ -376,6 +390,13 @@ whether the proposed destination has sufficient evidence and capability. The
 inverse/admission-benefit head must be especially conservative: it can identify
 `admission_benefit_uncertain` or `home_ready_review_candidate`, but it cannot
 declare an admission unnecessary.
+
+`jre/any_disposition.py` now implements the first deterministic Any Dispo review
+surface. It evaluates proposed destinations against decision-time evidence,
+destination capabilities, objective instability, unresolved red flags, source
+conflicts, high-risk host factors, follow-up reliability, and documented
+inpatient-only needs. It also attaches advisory `BoundaryTraceField` and
+`NearMissMemory` outputs for missing nodes and falsifiers.
 
 The planned contract is `ANY-DISPO-CSV-v0.1`. It should preserve the same
 leakage invariant used by DHSE: decision-time snapshot fields are inputs;

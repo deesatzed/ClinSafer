@@ -80,6 +80,13 @@ Black Swan / operating-envelope guardrails
 Destination capability map
         |
         v
+AnyDispositionReviewEngine
+  - deterministic blockers
+  - destination capability gaps
+  - admission-benefit uncertainty signals
+  - trace/memory advisory review pressure
+        |
+        v
 Disposition-specific heads
   - lower-acuity risk head
   - admission-benefit uncertainty head
@@ -112,6 +119,11 @@ The next sister head is:
 Admitted/observed patient -> candidate for home, observation, or rapid outpatient
 pathway review?
 ```
+
+That sister head now has a first deterministic foundation in
+`jre/any_disposition.py`. It does not decide disposition. It emits review states
+for lower-acuity blockers, admission-benefit uncertainty, level-of-care mismatch,
+insufficient evidence, and general review recommendation.
 
 ## Boundary Memory And Trace Layer
 
@@ -343,16 +355,15 @@ Metrics:
 1. Preserve DHSE as the first implemented Any Dispo head.
 2. Add `docs/ANY_DISPOSITION_MODEL_PLAN.md` as the umbrella plan.
 3. Implement foundational `BoundaryTraceField` and `NearMissMemory` modules.
-4. Define `ANY-DISPO-CSV-v0.1` in a new schema doc.
-5. Add sample admitted/observed cohort fixture.
-6. Add `scripts/validate_any_dispo_export.py`.
-7. Add `jre/any_disposition.py` with destination capability and deterministic
-   blocker logic.
-8. Add boundary trace and near-miss recall fields to Any Dispo reports.
-9. Add `scripts/export_any_dispo_features.py`.
-10. Add `scripts/benchmark_any_dispo_models.py`.
-11. Add clinician adjudication codebook for any-dispo labels.
-12. Add a demo/API panel named `Any Dispo Review`, initially read-only and
+4. Add `jre/any_disposition.py` with destination capability, deterministic
+   blocker logic, trace summaries, near-miss suggestions, and review states.
+5. Define `ANY-DISPO-CSV-v0.1` in a new schema doc.
+6. Add sample admitted/observed cohort fixture.
+7. Add `scripts/validate_any_dispo_export.py`.
+8. Add `scripts/export_any_dispo_features.py`.
+9. Add `scripts/benchmark_any_dispo_models.py`.
+10. Add clinician adjudication codebook for any-dispo labels.
+11. Add a demo/API panel named `Any Dispo Review`, initially read-only and
     retrospective.
 
 ## Pilot Readout

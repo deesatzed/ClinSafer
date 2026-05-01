@@ -36,6 +36,9 @@ What is real now:
   and retraction.
 - Recall advisory near-miss patterns from sparse signatures with
   strengthen/weaken feedback.
+- Evaluate a proposed disposition with `AnyDispositionReviewEngine`, including
+  hard blockers, destination capability gaps, admission-benefit uncertainty,
+  trace summaries, and near-miss suggestions.
 - Prevent empirical models or LLM-retrieved medical facts from clearing deterministic guardrails without governance.
 - Explain why the inverse problem is a review-prioritization and counterfactual
   admission-benefit problem, not a simple flipped label.
@@ -51,8 +54,7 @@ What is real now:
 
 2. Integrate the new boundary trace and near-miss recall foundations.
    - Source modules: `jre/boundary_trace.py` and `jre/associative_memory.py`.
-   - Wire advisory trace pressure into `AnyDispositionReviewReport` once
-     `jre/any_disposition.py` exists.
+   - Advisory trace pressure is now wired into `AnyDispositionReviewReport`.
    - Add API/demo fields for trace deposits, recalled memory IDs, missing
      nodes, falsifiers, and pattern-completion keys.
    - Keep memory output advisory only; no memory-only authorization, no
@@ -67,13 +69,15 @@ What is real now:
    - Add `sql/any_dispo_cohort_extract_template.sql`.
    - Preserve the DHSE leakage rule: decision-time fields are inputs; hospital-course and post-disposition fields are labels only.
 
-4. Build the admission-benefit uncertainty head.
-   - Add `jre/any_disposition.py`.
+4. Expand the admission-benefit uncertainty head.
+   - Source module: `jre/any_disposition.py`.
    - Add deterministic blockers for lower-acuity candidate status.
    - Emit labels/signals such as `low_observed_inpatient_need`,
      `admission_benefit_uncertain`, `home_ready_review_candidate`, and
      `level_of_care_mismatch`.
    - Never emit "safe to discharge" or "unnecessary admission".
+   - Next: connect this engine to real Any Dispo CSV fixtures, API/demo output,
+     and empirical feature export.
 
 5. Add Any Dispo validators and sample fixtures.
    - Add `scripts/validate_any_dispo_export.py`.
@@ -226,6 +230,7 @@ Answer to the Any Dispo pivot:
 
 ```bash
 python -m pytest tests/test_boundary_trace.py tests/test_associative_memory.py -q
+python -m pytest tests/test_any_disposition.py -q
 python -m pytest -q
 python scripts/export_dhse_empirical_features.py \
   --input data/dhse_synthetic_benchmark.jsonl \

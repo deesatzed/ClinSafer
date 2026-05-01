@@ -224,6 +224,7 @@ jre/boundary_trace.py  Stigmergic-style trace field for unresolved boundary sign
 jre/associative_memory.py  VAMS-style advisory near-miss recall from sparse signatures
 jre/synthetic_data.py  Synthetic cases and dataset generator
 jre/black_swan.py     Black Swan Guardrail Layer, assumption register, autonomy caps
+jre/any_disposition.py  Any Dispo review engine for proposed destination fit, blockers, capability gaps, and admission-benefit uncertainty
 jre/disposition_handoff.py  First implemented Any Dispo head: ED disposition handoff sufficiency scoring and PTR-B labeling
 jre/empirical_uncertainty.py  Text-free empirical feature contract for TabPFN/GBDT/conformal modeling
 MITIGATION_PLAN.md    Stigmergic/VAMS mitigation plan and demo update path
@@ -256,6 +257,19 @@ The four disposition questions are:
 
 The system should say `candidate for disposition review`, not `safe to
 discharge` or `unnecessary admission`.
+
+The package now includes `AnyDispositionReviewEngine`, a deterministic first
+pass that evaluates a proposed destination against decision-time evidence and
+destination capability. It can emit:
+
+- `LOWER_ACUITY_BLOCKED`
+- `ADMISSION_BENEFIT_UNCERTAIN`
+- `LEVEL_OF_CARE_MISMATCH`
+- `INSUFFICIENT_EVIDENCE`
+- `REVIEW_RECOMMENDED`
+- `NO_REVIEW_SIGNAL`
+
+These are review states, not disposition orders.
 
 See:
 

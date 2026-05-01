@@ -49,13 +49,13 @@ Method:
 
 Primary files:
 
+- `jre/any_disposition.py`
 - `docs/ANY_DISPOSITION_MODEL_PLAN.md`
 - `ARCHITECTURE.md`
 - `README.md`
 
 Planned files:
 
-- `jre/any_disposition.py`
 - `jre/any_dispo_contract.py`
 - `scripts/validate_any_dispo_export.py`
 - `scripts/export_any_dispo_features.py`
@@ -79,6 +79,10 @@ Method:
   review labels such as `home_ready_review_candidate`,
   `admission_benefit_uncertain`, and `level_of_care_mismatch`.
 - Keep outcome and hospital-course data as labels only.
+- Use implemented `AnyDispositionReviewEngine` states to route review:
+  `LOWER_ACUITY_BLOCKED`, `ADMISSION_BENEFIT_UNCERTAIN`,
+  `LEVEL_OF_CARE_MISMATCH`, `INSUFFICIENT_EVIDENCE`,
+  `REVIEW_RECOMMENDED`, or `NO_REVIEW_SIGNAL`.
 
 ## 4. Disposition Handoff Sufficiency
 
