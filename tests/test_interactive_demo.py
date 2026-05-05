@@ -340,6 +340,58 @@ class TestAnalysisEndpoint:
         assert method_stack["cognitive_bias_field"]["bias_entropy_score"] >= 0
         assert method_stack["input_signature"]["statement_count"] == len(case.statements)
 
+    def test_generic_domain_back_pain_transcript_is_repaired_before_analysis(self):
+        payload = {
+            "case_id": "generic-back-pain-repair",
+            "patient_context": {
+                "age": 62,
+                "chief_concern": "low back pain",
+                "domain": "general_med_management",
+                "literacy_hint": "unknown",
+                "language_barrier": False,
+                "has_caregiver": False,
+                "modality": "text",
+                "known_conditions": ["type 2 diabetes", "hypertension", "BPH"],
+            },
+            "statements": [
+                {
+                    "question": "Tell me about your back pain.",
+                    "answer": "Lower back pain after lifting last week.",
+                    "concept": None,
+                    "source": "patient",
+                    "metadata": {},
+                },
+                {
+                    "question": "Any numbness or tingling?",
+                    "answer": "Yes, tingling in my left foot at times and in my private areas.",
+                    "concept": None,
+                    "source": "patient",
+                    "metadata": {},
+                },
+                {
+                    "question": "Any issues with urination?",
+                    "answer": "No but my bladder seems more full than usual.",
+                    "concept": None,
+                    "source": "patient",
+                    "metadata": {},
+                },
+            ],
+            "ground_truth": {},
+        }
+        resp = client.post("/demo/analyze", json=payload)
+        assert resp.status_code == 200
+        data = resp.json()
+        method_stack = _section(data, "method_stack")["data"]
+        assert method_stack["input_signature"]["domain"] == "musculoskeletal_pain"
+        observations = _section(data, "observations")["data"]["observations"]
+        concepts = {obs["concept"] for obs in observations}
+        assert {"trauma_mechanism", "neuro_deficit", "bowel_bladder"} <= concepts
+        missing_text = " ".join(
+            row["safety_effect"]
+            for row in _section(data, "input_coverage")["data"]["rows"]
+        )
+        assert "Medication identity" not in missing_text
+
     def test_parse_transcript_endpoint_classifies_free_text_concepts(self):
         resp = client.post(
             "/demo/parse-transcript",

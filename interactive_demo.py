@@ -456,10 +456,22 @@ CATEGORY_GROUPS = {
 
 
 def _to_case_input(model: AnalyzeRequest) -> CaseInput:
+    domain = model.patient_context.domain
+    if domain == "general_med_management":
+        transcript_blob = " ".join(
+            [model.patient_context.chief_concern]
+            + [f"{stmt.question} {stmt.answer}" for stmt in model.statements]
+        )
+        inferred_domain = _infer_domain_from_transcript(
+            transcript_blob,
+            model.patient_context.chief_concern,
+        )
+        if inferred_domain != "general_med_management":
+            domain = inferred_domain
     ctx = PatientContext(
         age=model.patient_context.age,
         chief_concern=model.patient_context.chief_concern,
-        domain=model.patient_context.domain,
+        domain=domain,
         literacy_hint=model.patient_context.literacy_hint,
         language_barrier=model.patient_context.language_barrier,
         has_caregiver=model.patient_context.has_caregiver,
