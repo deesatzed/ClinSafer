@@ -46,6 +46,11 @@ The core safety invariant is:
 - Public landing page at `/` for testing, promotion, and explaining why the
   Any Dispo Judgment Readiness methodology matters in AI healthcare.
 - Interactive app route at `/demo`.
+- Interactive analysis now includes a `Method Stack Applied` section that runs
+  Any Dispo review and Cognitive Bias Field on the current encounter instead of
+  only describing them in marketing copy.
+- The Recommendations nav now renders final recommendations from the latest
+  analysis instead of opening an empty screen.
 - Bounded multi-role LLM candidate pipeline through OpenRouter.
 - Governance review and in-memory feedback/experience prototype.
 - Fly deployment.

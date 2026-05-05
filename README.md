@@ -29,6 +29,7 @@ JRE evaluates a clinical intake transcript and returns:
 7. **Black Swan Guardrail state** — whether assumptions failed and how far autonomy is allowed to proceed.
 8. **Mitigation plan** — immediate controls plus implemented advisory boundary traces, VAMS-style near-miss recall, governed template promotion, and churn/routing reduction.
 9. **Public landing page** — promotional and testing entrypoint that explains the Any Dispo, Cognitive Bias Field, Clinical Uncertainty Graph, Black Swan, governed knowledge, and empirical-model roadmap before launching the demo.
+10. **Method Stack Applied section** — the interactive analysis now explicitly runs and surfaces Any Dispo review, Cognitive Bias Field output, Clinical Uncertainty Graph signals, Black Swan Guardrails, JRE scoring, and the honest status of TabPFN / imbalance-aware modeling as a future cohort layer.
 
 ---
 

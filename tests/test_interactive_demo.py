@@ -39,6 +39,7 @@ client = TestClient(app)
 
 EXPECTED_SECTION_IDS = [
     "input_coverage",
+    "method_stack",
     "interpretation_boundaries",
     "provenance_authority",
     "observations",
@@ -166,6 +167,8 @@ class TestPageServing:
         assert "Overview" in html
         assert "Recommendations" in html
         assert "Governance" in html
+        assert html.index('id="nav-cases"') < html.index('id="nav-transcript"')
+        assert 'id="nav-recommendations" onclick="showRecommendations()"' in html
 
     def test_encounter_page_has_live_edit_controls(self):
         resp = client.get("/demo")
@@ -321,6 +324,21 @@ class TestAnalysisEndpoint:
         assert recs["ai_processing"]["prompt_contract"]
         assert recs["governance_actions"]
         assert "reasoning_integrity" in recs
+
+    def test_method_stack_surfaces_new_methods(self):
+        case = BASE_CASES[0]
+        resp = client.post("/demo/analyze", json=_make_analyze_payload(case))
+        data = resp.json()
+        method_stack = _section(data, "method_stack")["data"]
+        method_names = {m["name"] for m in method_stack["applied_methods"]}
+        assert "Any Dispo Review" in method_names
+        assert "Cognitive Bias Field" in method_names
+        assert "Clinical Uncertainty Graph" in method_names
+        assert "TabPFN / Imbalance-Aware Models" in method_names
+        assert method_stack["any_dispo"]["state"]
+        assert method_stack["any_dispo"]["cognitive_bias_field"]
+        assert method_stack["cognitive_bias_field"]["bias_entropy_score"] >= 0
+        assert method_stack["input_signature"]["statement_count"] == len(case.statements)
 
     def test_parse_transcript_endpoint_classifies_free_text_concepts(self):
         resp = client.post(

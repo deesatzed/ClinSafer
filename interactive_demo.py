@@ -63,6 +63,14 @@ from jre.templates import (
 )
 from jre.engine import SOURCE_SCORING_WEIGHT, GESTALT_PATTERNS, infer_concept
 from jre.experience import OutcomeFeedback
+from jre.any_disposition import (
+    AnyDispositionCase,
+    AnyDispositionReviewEngine,
+    DecisionTimeEvidence,
+    DestinationCapability,
+    ProposedDisposition,
+)
+from jre.cognitive_bias_field import CognitiveBiasFieldEngine
 
 # Import narratives and trap explanations from unified_demo
 from unified_demo import CASE_NARRATIVES, TRAP_EXPLANATIONS
@@ -99,6 +107,8 @@ _memory = ExperienceMemory.seeded()
 _jre = JudgmentReadinessEngine(memory=_memory)
 _guard = BlackSwanGuardrailEngine()
 _reasoning_guard = ReasoningIntegrityEngine()
+_any_dispo = AnyDispositionReviewEngine(include_cognitive_bias_field=True)
+_cognitive_bias = CognitiveBiasFieldEngine()
 
 # ---------------------------------------------------------------------------
 # Pydantic models
@@ -1525,6 +1535,177 @@ def _build_final_recommendations(
     }
 
 
+def _derive_any_dispo_case(
+    case: CaseInput,
+    jre_report: ReadinessReport,
+    bsg_report: GuardrailReport,
+    combined_state: str,
+) -> AnyDispositionCase:
+    """Build a conservative any-disposition stress test from the live encounter."""
+    lower_acuity_stress = combined_state in {
+        "ESCALATE",
+        "FAIL_CLOSED",
+        "ROUTE_CLINICIAN",
+        "HOLD_AND_VERIFY",
+        "NEED_OBJECTIVE_DATA",
+    }
+    destination = "home" if lower_acuity_stress else "telehealth"
+    rationale = (
+        "Lower-acuity stress test: could this encounter safely go home or stay remote?"
+        if lower_acuity_stress
+        else "Narrow-pathway stress test: can the encounter remain in a low-acuity audited workflow?"
+    )
+
+    unresolved_red_flags = [
+        f"{_display_concept(f.concept)}: {f.reason}"
+        for f in jre_report.findings
+        if f.category == "red_flag"
+    ][:6]
+    unresolved_red_flags.extend(
+        f"{f.rule_id}: {f.reason}"
+        for f in bsg_report.findings
+        if f.category in {"sentinel_red_flag", "jre_escalation_wrap"}
+    )
+
+    source_conflicts = [
+        f"{_display_concept(f.concept)}: {f.reason}"
+        for f in jre_report.findings
+        if f.category == "contradictory"
+    ]
+    source_conflicts.extend(
+        f"{f.rule_id}: {f.reason}"
+        for f in bsg_report.findings
+        if f.category in {"objective_data_integrity", "workflow_integrity"}
+    )
+
+    objective_gaps = [
+        f"{_display_concept(f.concept)}: {f.reason}"
+        for f in jre_report.findings
+        if f.category in {"missing", "objective_needed", "unknowable_remote"}
+    ][:8]
+    high_risk_factors = list(case.patient_context.known_conditions or [])
+    if case.patient_context.age >= 65:
+        high_risk_factors.append("age>=65")
+
+    inpatient_needs = []
+    if unresolved_red_flags:
+        inpatient_needs.append("urgent clinician reassessment")
+    if any("oxygen" in item.lower() or "dyspnea" in item.lower() for item in unresolved_red_flags + objective_gaps):
+        inpatient_needs.append("serial vitals or oxygen assessment")
+    if any("ecg" in item.lower() or "chest" in item.lower() for item in unresolved_red_flags + objective_gaps):
+        inpatient_needs.append("objective cardiac evaluation")
+
+    evidence = DecisionTimeEvidence(
+        unresolved_red_flags=unresolved_red_flags,
+        source_conflicts=source_conflicts,
+        high_risk_factors=high_risk_factors,
+        objective_gaps=objective_gaps,
+        inpatient_only_needs=list(dict.fromkeys(inpatient_needs)),
+        response_to_treatment="not_documented",
+        follow_up_reliability="unknown",
+        caregiver_status="available" if case.patient_context.has_caregiver else "unknown",
+    )
+    capability = DestinationCapability(
+        medication_access=case.patient_context.domain == "med_refill_hypertension",
+        caregiver_or_staff_support=case.patient_context.has_caregiver,
+        confirmed_follow_up=False,
+    )
+    return AnyDispositionCase(
+        case_id=case.case_id,
+        age=case.patient_context.age,
+        chief_concern=case.patient_context.chief_concern,
+        domain=case.patient_context.domain,
+        proposed_disposition=ProposedDisposition(
+            destination=destination,
+            service="remote_or_home_review",
+            monitoring_level="none" if destination == "home" else "remote",
+            rationale=rationale,
+            follow_up_plan="not confirmed in transcript",
+        ),
+        destination_capability=capability,
+        evidence=evidence,
+        metadata={"combined_state": combined_state, "source": "interactive_demo"},
+    )
+
+
+def _build_method_stack_section(
+    case: CaseInput,
+    jre_report: ReadinessReport,
+    bsg_report: GuardrailReport,
+    reasoning_report: ReasoningIntegrityReport,
+    combined_state: str,
+) -> Dict[str, Any]:
+    """Show which newer methods actually ran for this encounter."""
+    any_dispo_case = _derive_any_dispo_case(case, jre_report, bsg_report, combined_state)
+    any_dispo_report = _any_dispo.evaluate(any_dispo_case).to_dict()
+    bias_report = _cognitive_bias.evaluate_jre(
+        case,
+        jre_report,
+        bsg_report,
+        reasoning_report,
+    ).to_dict()
+    graph_summary = (jre_report.uncertainty_graph or {}).get("summary", {})
+    dominant_biases = bias_report.get("dominant_biases", [])
+    any_bias = any_dispo_report.get("cognitive_bias_field") or {}
+
+    applied_methods = [
+        {
+            "name": "Judgment Readiness Engine",
+            "status": jre_report.state,
+            "result": f"JRI {jre_report.scores.readiness_index:.1f}; {len(jre_report.findings)} uncertainty or safety findings.",
+            "evidence": "Runs on the current transcript statements and can route, clarify, require objective data, or escalate.",
+        },
+        {
+            "name": "Any Dispo Review",
+            "status": any_dispo_report["state"],
+            "result": f"{any_dispo_report['proposed_destination']} stress test; priority {any_dispo_report['review_priority']:.1f}.",
+            "evidence": any_dispo_report["rationale"],
+        },
+        {
+            "name": "Cognitive Bias Field",
+            "status": f"entropy {bias_report['bias_entropy_score']:.1f}",
+            "result": ", ".join(b["label"] for b in dominant_biases[:3]) or "No dominant bias pressure detected.",
+            "evidence": "Generates fresh-eyes prompts, information-gain candidates, and cognitive friction actions.",
+        },
+        {
+            "name": "Clinical Uncertainty Graph",
+            "status": f"{graph_summary.get('observed_nodes', 0)}/{graph_summary.get('node_count', 0)} nodes observed",
+            "result": f"graph readiness {graph_summary.get('graph_readiness_index', 'n/a')}; boundary sensitivity {graph_summary.get('boundary_sensitivity_index', 0):.2f}.",
+            "evidence": "Turns claims into typed nodes with source reliability, ranges, uncertainty distribution, and action implications.",
+        },
+        {
+            "name": "Black Swan Guardrails",
+            "status": bsg_report.guardrail_state,
+            "result": f"autonomy cap {bsg_report.max_autonomy_tier}; {len(bsg_report.findings)} guardrail findings.",
+            "evidence": "Checks sentinel, integrity, communication-envelope, workflow, and operating-boundary failures.",
+        },
+        {
+            "name": "TabPFN / Imbalance-Aware Models",
+            "status": "planned empirical layer",
+            "result": "Not run on a single demo transcript; requires a labeled disposition cohort.",
+            "evidence": "The app now exposes review states, blockers, uncertainty features, and outcomes needed for later TabPFN, conformal, calibration, and imbalanced-data benchmarking.",
+        },
+    ]
+
+    return {
+        "id": "method_stack",
+        "title": "Method Stack Applied",
+        "subtitle": "Which new methodologies actually ran on this encounter, and which remain empirical-model work.",
+        "data": {
+            "applied_methods": applied_methods,
+            "any_dispo": any_dispo_report,
+            "cognitive_bias_field": bias_report,
+            "any_dispo_bias_field": any_bias,
+            "input_signature": {
+                "case_id": case.case_id,
+                "statement_count": len(case.statements),
+                "domain": case.patient_context.domain,
+                "sources": sorted({s.source for s in case.statements}),
+            },
+        },
+    }
+
+
 def _llm_role_manifest() -> List[Dict[str, Any]]:
     if _llm is None:
         return []
@@ -2101,6 +2282,7 @@ def _build_progressive_sections(
     """Build progressive analysis sections for the executive demo."""
     return [
         _build_input_coverage_section(case, jre_report, bsg_report),
+        _build_method_stack_section(case, jre_report, bsg_report, reasoning_report, combined_state),
         _build_interpretation_boundaries_section(case, jre_report),
         _build_provenance_authority_section(case, jre_report, bsg_report, reasoning_report, combined_state),
         _build_observations_section(jre_report),
@@ -3510,6 +3692,22 @@ textarea.suggestion-edit {
 .signal-list { margin-top: 12px; display: grid; gap: 6px; }
 .signal-pill { background: #ffffff; border: 1px solid rgba(207,226,234,.9); border-radius: 7px; padding: 8px; font-size: 12px; }
 .signal-kind { font-weight: 800; color: var(--accent); margin-right: 6px; }
+.method-stack-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; margin-bottom: 14px; }
+.method-stack-card {
+  background: #fbfefd;
+  border: 1px solid rgba(207,226,234,.92);
+  border-radius: 8px;
+  padding: 14px;
+}
+.method-stack-card h4 { font-size: 13px; margin-bottom: 8px; display:flex; justify-content:space-between; gap:8px; align-items:flex-start; }
+.method-status { display:inline-block; border-radius: 999px; padding: 2px 8px; background: var(--accent-soft); color: var(--accent); font-size: 11px; font-weight: 800; white-space: nowrap; }
+.method-result { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+.method-evidence { font-size: 12px; color: var(--text-dim); }
+.bias-grid { display:grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+@media (max-width: 768px) { .bias-grid { grid-template-columns: 1fr; } }
+.bias-card { background: #f8f4ff; border: 1px solid rgba(124,58,237,.18); border-radius: 8px; padding: 12px; }
+.bias-card h4 { color: var(--purple); font-size: 13px; margin-bottom: 8px; }
+.bias-item { border-left: 3px solid var(--purple); background: white; border-radius: 6px; padding: 8px 10px; margin-bottom: 8px; font-size: 12px; }
 </style>
 </head>
 <body>
@@ -3517,12 +3715,12 @@ textarea.suggestion-edit {
 <div class="header">
   <h1>Clinical Safety <span>Interactive Demo</span></h1>
   <div class="header-nav">
-    <button id="nav-transcript" class="active" onclick="showScreen('transcript')">Start Transcript</button>
     <button id="nav-overview" onclick="showScreen('overview')">Overview</button>
     <button id="nav-cases" onclick="showScreen('cases')">Cases</button>
+    <button id="nav-transcript" class="active" onclick="showScreen('transcript')">Start Transcript</button>
     <button id="nav-encounter" onclick="showScreen('encounter')">Encounter</button>
     <button id="nav-analysis" onclick="showScreen('analysis')">Analysis</button>
-    <button id="nav-recommendations" onclick="showScreen('recommendations')">Recommendations</button>
+    <button id="nav-recommendations" onclick="showRecommendations()">Recommendations</button>
     <button id="nav-learning" onclick="showScreen('learning')">Governance</button>
   </div>
 </div>
@@ -4330,6 +4528,7 @@ function renderSectionBody(section) {
   if (!el) return;
 
   switch (section.id) {
+    case 'method_stack': el.innerHTML = renderMethodStack(section.data); break;
     case 'interpretation_boundaries': el.innerHTML = renderInterpretationBoundaries(section.data); break;
     case 'input_coverage': el.innerHTML = renderInputCoverage(section.data); break;
     case 'observations': el.innerHTML = renderObservations(section.data); break;
@@ -4349,6 +4548,54 @@ function renderSectionBody(section) {
 }
 
 // Section renderers
+function renderMethodStack(data) {
+  let h = '<div class="coverage-banner"><strong>Live input signature:</strong> ' + esc(data.input_signature.statement_count) + ' statement(s), domain ' + esc(String(data.input_signature.domain || '').replace(/_/g, ' ')) + ', sources ' + esc((data.input_signature.sources || []).join(', ')) + '. These are computed from the current encounter, not static copy.</div>';
+  h += '<div class="method-stack-grid">';
+  for (const method of data.applied_methods || []) {
+    h += '<div class="method-stack-card">';
+    h += '<h4><span>' + esc(method.name) + '</span><span class="method-status">' + esc(method.status) + '</span></h4>';
+    h += '<div class="method-result">' + esc(method.result) + '</div>';
+    h += '<div class="method-evidence">' + esc(method.evidence) + '</div>';
+    h += '</div>';
+  }
+  h += '</div>';
+
+  const anyDispo = data.any_dispo || {};
+  h += '<div class="clinician-action-layout">';
+  h += '<div class="recommendation-card"><h3>Any Dispo Review Output</h3>';
+  h += '<div class="evidence-row"><strong>State:</strong> ' + esc(anyDispo.state || '') + '<br><span style="color:var(--text-dim)">Proposed destination stress test: ' + esc(anyDispo.proposed_destination || '') + '</span></div>';
+  for (const item of (anyDispo.hard_blockers || []).slice(0, 5)) h += '<div class="evidence-row"><strong>Blocker</strong><br>' + esc(item) + '</div>';
+  for (const item of (anyDispo.capability_gaps || []).slice(0, 4)) h += '<div class="evidence-row"><strong>Capability gap</strong><br>' + esc(item) + '</div>';
+  for (const item of (anyDispo.missing_evidence || []).slice(0, 4)) h += '<div class="evidence-row"><strong>Missing evidence</strong><br>' + esc(item) + '</div>';
+  if (!(anyDispo.hard_blockers || []).length && !(anyDispo.capability_gaps || []).length && !(anyDispo.missing_evidence || []).length) h += '<div class="empty-state">No major any-disposition blocker detected for this stress test.</div>';
+  h += '</div>';
+
+  const cbf = data.cognitive_bias_field || {};
+  h += '<div class="recommendation-card"><h3>Cognitive Bias Field Output</h3>';
+  h += '<div class="evidence-row"><strong>Bias entropy:</strong> ' + Number(cbf.bias_entropy_score || 0).toFixed(1) + '<br><span style="color:var(--text-dim)">Authority: ' + esc(cbf.authority || 'Advisory') + '</span></div>';
+  for (const bias of (cbf.dominant_biases || []).slice(0, 4)) {
+    h += '<div class="evidence-row"><strong>' + esc(bias.label) + '</strong> ' + Number(bias.score || 0).toFixed(1) + '<br>' + esc(bias.evidence || '') + '<br><span style="color:var(--text-dim)">' + esc(bias.mitigation || '') + '</span></div>';
+  }
+  h += '</div></div>';
+
+  h += '<div class="bias-grid">';
+  h += '<div class="bias-card"><h4>Information-Gain Candidates</h4>';
+  for (const q of (cbf.information_gain_candidates || []).slice(0, 5)) {
+    h += '<div class="bias-item"><strong>' + esc(q.target || '') + '</strong> (' + esc(q.yield_class || '') + ')<br>' + esc(q.rationale || '') + '</div>';
+  }
+  if (!(cbf.information_gain_candidates || []).length) h += '<div class="empty-state">No high-yield uncertainty reducer identified.</div>';
+  h += '</div>';
+  h += '<div class="bias-card"><h4>Fresh-Eyes / Friction Actions</h4>';
+  for (const action of (cbf.friction_actions || []).slice(0, 5)) {
+    h += '<div class="bias-item"><strong>' + esc(action.label || '') + '</strong><br>' + esc(action.reason || '') + '<br><span style="color:var(--text-dim)">' + esc(action.prompt || '') + '</span></div>';
+  }
+  if (cbf.fresh_eyes_payload && cbf.fresh_eyes_payload.prompt) {
+    h += '<details style="margin-top:8px;"><summary style="cursor:pointer;font-weight:800;">Fresh-eyes prompt</summary><div style="font-size:12px;margin-top:6px;color:var(--text-dim);">' + esc(cbf.fresh_eyes_payload.prompt) + '</div></details>';
+  }
+  h += '</div></div>';
+  return h;
+}
+
 function renderDemoSummary(data) {
   if (!data.state) return '';
   let h = '<div class="summary-panel">';
@@ -4414,7 +4661,21 @@ function renderRecommendations(data) {
   h += '<div class="recommendation-card"><h3>Clinician Handoff</h3><div class="handoff-text">' + esc(data.clinician_handoff || '') + '</div></div>';
   h += '</div>';
 
+  h += '<div class="recommendation-card"><h3>Why This Is Not Canned</h3>';
+  h += '<div class="medical-director-note">This page is rendered from the most recent /demo/analyze response. It uses the current encounter state, top JRE findings, Black Swan guardrails, cognitive forcing actions, human-factor boundary, and governance outputs. If the encounter is edited and analyzed again, these recommendations change.</div>';
+  h += '</div>';
+
+  if ((data.critical_evidence || []).length) {
+    h += '<div class="recommendation-card"><h3>Critical Evidence Driving The Recommendation</h3>';
+    for (const ev of (data.critical_evidence || []).slice(0, 8)) {
+      h += '<div class="evidence-row"><strong>' + esc(ev.signal || ev.rule || '') + '</strong> ' + authorityChip(ev.authority) + '<br>' + esc(ev.why || '') + '<br><span style="color:var(--text-dim)">' + esc(ev.rule || '') + '</span></div>';
+    }
+    h += '</div>';
+  }
+
   h += '<div class="recommendation-card"><h3>Patient-Facing Message</h3><div class="patient-script">' + esc(data.patient_message || '') + '</div></div>';
+
+  if (data.human_factors) h += renderHumanFactorsRecommendation(data.human_factors);
 
   if (data.reasoning_integrity && (data.reasoning_integrity.actions || []).length) {
     h += '<div class="recommendation-card"><h3>Reasoning Integrity / Cognitive Forcing</h3>';
@@ -4441,6 +4702,25 @@ function renderRecommendations(data) {
   h += '<div class="recommendation-card"><h3>Medical Director / Governance Note</h3>';
   h += '<div class="medical-director-note">Supporting evidence, provenance, VAMS-style memory recall, human-factor boundary details, and LLM candidate findings are on the Analysis page. This page is intentionally limited to action, handoff, patient language, and the few boundaries that should change clinician behavior now.</div>';
   h += '</div>';
+
+  if ((data.governance_actions || []).length || (data.quality_metrics || []).length) {
+    h += '<div class="clinician-action-layout">';
+    h += '<div class="recommendation-card"><h3>Governance Actions</h3><ul>';
+    for (const item of data.governance_actions || []) h += '<li>' + esc(item) + '</li>';
+    h += '</ul></div>';
+    h += '<div class="recommendation-card"><h3>Validation Metrics To Capture</h3><ul>';
+    for (const item of data.quality_metrics || []) h += '<li>' + esc(item) + '</li>';
+    h += '</ul></div>';
+    h += '</div>';
+  }
+
+  if (data.ai_processing) {
+    h += '<div class="recommendation-card"><h3>AI / Model Authority Boundary</h3>';
+    h += '<div class="medical-director-note">' + esc(data.ai_processing.current_authority || '') + '</div>';
+    h += '<ul>';
+    for (const item of data.ai_processing.prompt_contract || []) h += '<li>' + esc(item) + '</li>';
+    h += '</ul></div>';
+  }
   h += '</div>';
   return h;
 }
