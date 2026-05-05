@@ -220,6 +220,7 @@ jre/models.py          Data models
 jre/templates.py       Domain-specific safety slots and red-flag patterns
 jre/engine.py          Judgment Readiness scoring, MUD map, CLEAR questions
 jre/experience.py      Experiential learning memory for distortion priors and question yield
+jre/cognitive_bias_field.py  Bias entropy, information-gain ranking, hypothesis survival, and disposition fragility
 jre/boundary_trace.py  Stigmergic-style trace field for unresolved boundary signals
 jre/associative_memory.py  VAMS-style advisory near-miss recall from sparse signatures
 jre/synthetic_data.py  Synthetic cases and dataset generator
@@ -392,31 +393,37 @@ The safety system would be:
 2. **Bounded multi-role LLM pipeline** — extractor, boundary reasoner, verifier, and bias auditor propose candidate observations, coverage gaps, missing falsifiers, and cognitive forcing actions.
 3. **Expert-system shell** — verifies required slots, red flags, contradictions, and remote boundaries.
 4. **Reasoning integrity guard** — audits for anchoring, premature closure, confirmation bias, search satisficing, omission bias, diagnostic momentum, framing risk, and overconfidence.
-5. **Uncertainty model** — confidence, missingness, distortion, and source reliability.
-6. **Experience memory** — learns which questions expose hidden risk in which patient/context patterns.
-7. **Stigmergic boundary trace** — implemented as an in-memory `BoundaryTraceField` that keeps unresolved claims, source conflicts, stale data, social/workflow pressure, and feedback from disappearing between turns.
-8. **VAMS-style near-miss recall** — implemented as an in-memory `NearMissMemory` that recalls prior boundary failures from partial case signatures and suggests missing nodes or falsifiers.
-9. **Any Dispo disposition governor** — audits whether the proposed destination
+5. **Cognitive bias field** — converts reasoning-integrity, graph, trace, and
+   Any Dispo signals into advisory bias entropy, hypothesis survival,
+   information-gain ranking, disposition fragility, fresh-eyes payloads, and
+   cognitive friction actions.
+6. **Uncertainty model** — confidence, missingness, distortion, and source reliability.
+7. **Experience memory** — learns which questions expose hidden risk in which patient/context patterns.
+8. **Stigmergic boundary trace** — implemented as an in-memory `BoundaryTraceField` that keeps unresolved claims, source conflicts, stale data, social/workflow pressure, and feedback from disappearing between turns.
+9. **VAMS-style near-miss recall** — implemented as an in-memory `NearMissMemory` that recalls prior boundary failures from partial case signatures and suggests missing nodes or falsifiers.
+10. **Any Dispo disposition governor** — audits whether the proposed destination
    and level of monitoring are justified, whether a lower-acuity path is blocked,
    whether admission benefit is uncertain, and whether level of care is
    mismatched.
-10. **Empirical boundary learner** — uses DHSE/Any Dispo feature exports, imbalanced-data
+11. **Empirical boundary learner** — uses DHSE/Any Dispo feature exports, imbalanced-data
    metrics, TabPFN/GBDT baselines, calibration, and selective/conformal
    thresholds to learn where review is needed.
-11. **Governed medical knowledge layer** — asks narrow guideline/red-flag
+12. **Governed medical knowledge layer** — asks narrow guideline/red-flag
     questions, stores source-bound candidate facts, and promotes only reviewed
     rules.
-12. **Governance queue** — promotes learned rules/templates only after validation, simulation, and review.
-13. **Arbiter** — decides whether the case is ready, needs clarification, needs objective data, or must escalate.
-14. **Provider UI** — shows the boundary map and rule trace, not just a note summary.
+13. **Governance queue** — promotes learned rules/templates only after validation, simulation, and review.
+14. **Arbiter** — decides whether the case is ready, needs clarification, needs objective data, or must escalate.
+15. **Provider UI** — shows the boundary map and rule trace, not just a note summary.
 
 This is designed to be inserted into a telehealth or autonomous-intake pipeline before refills, triage, symptom assessment, or chronic disease check-ins.
 
 The current demo implements transcript intake, input coverage auditing,
 deterministic controls, bounded multi-role LLM candidate analysis, visible
 mitigation planning, and foundational in-memory trace/near-miss recall modules.
-The next step is wiring these modules into the Any Dispo review path, API, and
-UI while preserving the invariant that memory output is advisory candidate
+The cognitive bias field now adds backend advisory outputs for bias entropy,
+fresh-eyes review, disposition fragility, hypothesis survival, and cognitive
+friction. The next step is wiring these modules into the API and UI while
+preserving the invariant that memory or bias-field output is advisory candidate
 risks/questions/falsifiers rather than clinical authorization.
 
 ---

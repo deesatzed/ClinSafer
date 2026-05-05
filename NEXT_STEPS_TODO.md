@@ -39,6 +39,9 @@ What is real now:
 - Evaluate a proposed disposition with `AnyDispositionReviewEngine`, including
   hard blockers, destination capability gaps, admission-benefit uncertainty,
   trace summaries, and near-miss suggestions.
+- Generate advisory cognitive-bias field reports with bias entropy,
+  information-gain ranking, hypothesis survival, disposition fragility,
+  fresh-eyes payloads, and cognitive friction actions.
 - Prevent empirical models or LLM-retrieved medical facts from clearing deterministic guardrails without governance.
 - Explain why the inverse problem is a review-prioritization and counterfactual
   admission-benefit problem, not a simple flipped label.
@@ -62,14 +65,22 @@ What is real now:
    - Persistence is a later step after datastore, PHI/deidentification,
      retention, and audit policies are chosen.
 
-3. Define the Any Dispo data contract.
+3. Surface the cognitive-bias field in product/API surfaces.
+   - Source module: `jre/cognitive_bias_field.py`.
+   - Add API/demo fields for bias entropy, dominant bias factors,
+     information-gain candidates, hypothesis survival, disposition fragility,
+     fresh-eyes payload, and cognitive friction actions.
+   - Keep outputs advisory only: no clinician-bias diagnosis, no quantum
+     diagnosis claims, no guardrail loosening, no disposition authorization.
+
+4. Define the Any Dispo data contract.
    - Add `docs/ANY_DISPO_CANONICAL_CSV_SCHEMA.md`.
    - Add `jre/any_dispo_contract.py`.
    - Add `data/any_dispo_column_mapping_template.csv`.
    - Add `sql/any_dispo_cohort_extract_template.sql`.
    - Preserve the DHSE leakage rule: decision-time fields are inputs; hospital-course and post-disposition fields are labels only.
 
-4. Expand the admission-benefit uncertainty head.
+5. Expand the admission-benefit uncertainty head.
    - Source module: `jre/any_disposition.py`.
    - Add deterministic blockers for lower-acuity candidate status.
    - Emit labels/signals such as `low_observed_inpatient_need`,
@@ -79,65 +90,65 @@ What is real now:
    - Next: connect this engine to real Any Dispo CSV fixtures, API/demo output,
      and empirical feature export.
 
-5. Add Any Dispo validators and sample fixtures.
+6. Add Any Dispo validators and sample fixtures.
    - Add `scripts/validate_any_dispo_export.py`.
    - Add `data/sample_any_dispo_ehr_export.csv`.
    - Validate encounter timing, proposed disposition, actual disposition,
      destination capability, label fields, and adjudication fields.
    - Fail closed on post-decision fields placed in snapshot columns.
 
-6. Export Any Dispo empirical features.
+7. Export Any Dispo empirical features.
    - Add `scripts/export_any_dispo_features.py`.
    - Include JRE graph summaries, BSG state, destination capability gaps,
      blocker counts, trace pressure summaries, near-miss recall counts, DSI
      where available, and text-free label fields.
    - Exclude raw notes, diagnosis text, evidence snippets, and questions.
 
-7. Benchmark Any Dispo models.
+8. Benchmark Any Dispo models.
    - Add `scripts/benchmark_any_dispo_models.py`.
    - Compare transparent baselines, imbalanced models, GBDT, balanced forest,
      TabPFN, and later TabPFN-HPO.
    - Report lower-acuity failure capture and low observed inpatient-need review
      yield separately.
 
-8. Add calibration and selective prediction.
+9. Add calibration and selective prediction.
    - Add isotonic/Platt calibration where dependencies allow.
    - Add temporal split support.
    - Add review threshold calibrated to positive recall.
    - Add abstention/review output when uncertainty is too wide.
 
-9. Add conformal/risk-control layer.
+10. Add conformal/risk-control layer.
    - Start with split calibration over PTR-B risk.
    - Report coverage, miss-rate bound, reviewed fraction, and false-negative audit.
    - Preserve invariant: conformal output can raise review priority, not clear guardrails.
 
-10. Add governed medical knowledge registry.
+11. Add governed medical knowledge registry.
    - Define a structured JSONL or CSV format for candidate clinical facts.
    - Include source citation, model name, prompt hash, answer hash, reviewer status, effective date, rollback notes, and monitoring plan.
    - Keep all candidates non-production until reviewed.
 
-11. Add `scripts/query_medical_knowledge.py`.
+12. Add `scripts/query_medical_knowledge.py`.
    - Atomic clinical/guideline questions only.
    - No PHI.
    - Read model/API key from env (`XAI_API_KEY`, `GROK_MEDICAL_KNOWLEDGE_MODEL`, or OpenRouter equivalent).
    - Store candidate facts with hashes and citations.
    - Do not auto-edit `jre/templates.py` or `jre/black_swan.py`.
 
-12. Add real-data pilot support.
+13. Add real-data pilot support.
    - Run `scripts/validate_dhse_export.py` on a larger canonical CSV.
    - Generate a study packet with `scripts/create_dhse_study_packet.py`.
    - Export empirical features.
    - Run model benchmarks.
    - Write pilot readout: cohort flow, label prevalence, leakage review, model results, and error analysis.
 
-13. Add browser E2E tests for interactive demo.
+14. Add browser E2E tests for interactive demo.
    - Transcript paste.
    - Analyze flow.
    - Clinical Uncertainty Graph section rendering.
    - Final Recommendations page.
    - LLM unavailable/retry behavior.
 
-14. Deploy latest app if needed.
+15. Deploy latest app if needed.
    - Confirm local tests.
    - Confirm secrets are present.
    - Deploy to Fly.
@@ -200,6 +211,9 @@ Collect adjudication fields:
   stale evidence, and retractions.
 - Near-miss recall precision, useful-recall rate, rejected-analogue weakening,
   and false analogue audit.
+- Cognitive-bias field scoring under high missingness, reassuring anchors,
+  low-yield questions, fragile disposition states, fresh-eyes hiding, and
+  cognitive friction triggers.
 
 ## Strategic Positioning
 
@@ -231,6 +245,7 @@ Answer to the Any Dispo pivot:
 ```bash
 python -m pytest tests/test_boundary_trace.py tests/test_associative_memory.py -q
 python -m pytest tests/test_any_disposition.py -q
+python -m pytest tests/test_cognitive_bias_field.py -q
 python -m pytest -q
 python scripts/export_dhse_empirical_features.py \
   --input data/dhse_synthetic_benchmark.jsonl \

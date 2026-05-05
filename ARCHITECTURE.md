@@ -41,6 +41,9 @@ Proposed disposition + destination capability map
 AnyDispositionReviewEngine
   (hard blockers, capability gaps, admission-benefit uncertainty)
         ↓
+Cognitive bias field
+  (bias entropy, hypothesis survival, fragility, cognitive friction)
+        ↓
 Clinical uncertainty graph
         ↓
 Black Swan Guardrail assumption layer
@@ -297,7 +300,7 @@ Implemented umbrella report for any proposed disposition. It contains the
 proposed destination, deterministic blockers, destination capability gaps,
 admission-benefit uncertainty signals, missing evidence, trace summary,
 near-miss memory suggestions, signature keys, review priority, and a conservative
-review state.
+review state. It can optionally attach a `cognitive_bias_field` payload.
 
 Implemented states:
 
@@ -309,6 +312,19 @@ Implemented states:
 - `NO_REVIEW_SIGNAL`
 
 These states route review. They do not order a destination.
+
+### CognitiveBiasFieldReport
+
+Implemented advisory reasoning-risk layer. It converts JRE, BSG, reasoning
+integrity, Any Dispo, trace, and near-miss memory outputs into bias entropy,
+dominant bias factors, information-gain candidates, hypothesis-survival ledgers,
+disposition-fragility reports, cognitive-friction actions, and fresh-eyes
+payloads.
+
+The field does not claim clinician bias, quantum diagnosis, true Monte Carlo
+clinical probability, or disposition authority. It can only raise review
+pressure, preserve uncertainty, and require disconfirming evidence, objective
+data, falsifiers, or a blinded reread.
 
 ### BoundaryTraceField
 
@@ -351,8 +367,10 @@ The deployed app now enforces these demo-level guarantees:
    and cannot support closure.
 4. Missing data is not treated as absent data.
 5. Reasoning-integrity findings create cognitive forcing actions, not clinician-blame labels.
-6. LLM findings are candidate signals only.
-7. The most-restrictive governor combines JRE, BSG, and reasoning-integrity states before any final
+6. Cognitive-bias field outputs are advisory review pressure, not clinician
+   diagnosis or disposition authority.
+7. LLM findings are candidate signals only.
+8. The most-restrictive governor combines JRE, BSG, and reasoning-integrity states before any final
    recommendation is rendered.
 
 ## Future extension
@@ -364,7 +382,8 @@ The deployed app now enforces these demo-level guarantees:
    datastore, retention, and deidentification rules are chosen.
 5. Wire boundary traces and near-miss recall into Any Dispo review reports,
    API output, and the clinician-facing UI.
-6. Add falsifier planning: what would disprove danger, what would disprove reassurance, and what evidence changes the autonomy cap.
+6. Surface the cognitive-bias field in API/demo views with fresh-eyes mode,
+   disposition fragility, and cognitive friction prompts.
 7. Add governed AI-generated dynamic templates: LLM proposes nodes, ranges, distributions, and rules; validators decide what can execute.
 8. Add Any Dispo schema and review heads for lower-acuity risk, admission-benefit
    uncertainty, and level-of-care mismatch.

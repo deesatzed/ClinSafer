@@ -112,6 +112,7 @@ class AnyDispositionReviewReport:
     signature_keys: List[str]
     rationale: str
     authority: str = ADVISORY_AUTHORITY
+    cognitive_bias_field: Optional[Dict[str, Any]] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -120,8 +121,13 @@ class AnyDispositionReviewReport:
 class AnyDispositionReviewEngine:
     """Review proposed destinations without authorizing care."""
 
-    def __init__(self, memory: Optional[NearMissMemory] = None) -> None:
+    def __init__(
+        self,
+        memory: Optional[NearMissMemory] = None,
+        include_cognitive_bias_field: bool = False,
+    ) -> None:
         self.memory = memory or seeded_any_dispo_memory()
+        self.include_cognitive_bias_field = include_cognitive_bias_field
 
     def evaluate(self, case: AnyDispositionCase) -> AnyDispositionReviewReport:
         signature_keys = self.signature_keys(case)
@@ -144,7 +150,7 @@ class AnyDispositionReviewEngine:
             recall_count=int(memory_suggestions["recall_count"]),
         )
 
-        return AnyDispositionReviewReport(
+        report = AnyDispositionReviewReport(
             case_id=case.case_id,
             state=state,
             review_priority=review_priority,
@@ -158,6 +164,11 @@ class AnyDispositionReviewEngine:
             signature_keys=signature_keys,
             rationale=self._rationale(state),
         )
+        if self.include_cognitive_bias_field:
+            from .cognitive_bias_field import CognitiveBiasFieldEngine
+
+            report.cognitive_bias_field = CognitiveBiasFieldEngine().evaluate_any_dispo(case, report).to_dict()
+        return report
 
     def signature_keys(self, case: AnyDispositionCase) -> List[str]:
         evidence = case.evidence

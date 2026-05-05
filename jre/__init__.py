@@ -28,6 +28,16 @@ from .any_disposition import (
     ProposedDisposition,
     seeded_any_dispo_memory,
 )
+from .cognitive_bias_field import (
+    BiasFactorScore,
+    CognitiveBiasFieldEngine,
+    CognitiveBiasFieldReport,
+    CognitiveFrictionAction,
+    DispositionFragilityReport,
+    FreshEyesPayload,
+    HypothesisSurvivalItem,
+    InformationGainCandidate,
+)
 from .models import (
     CaseInput, PatientContext, Statement,
     ReadinessScores, Finding, Observation,
@@ -113,6 +123,14 @@ __all__ = [
     "DestinationCapability",
     "ProposedDisposition",
     "seeded_any_dispo_memory",
+    "BiasFactorScore",
+    "CognitiveBiasFieldEngine",
+    "CognitiveBiasFieldReport",
+    "CognitiveFrictionAction",
+    "DispositionFragilityReport",
+    "FreshEyesPayload",
+    "HypothesisSurvivalItem",
+    "InformationGainCandidate",
     "CaseInput",
     "PatientContext",
     "Statement",

@@ -87,6 +87,13 @@ AnyDispositionReviewEngine
   - trace/memory advisory review pressure
         |
         v
+Cognitive bias field
+  - bias entropy
+  - hypothesis survival ledger
+  - disposition fragility
+  - cognitive friction actions
+        |
+        v
 Disposition-specific heads
   - lower-acuity risk head
   - admission-benefit uncertainty head
@@ -150,6 +157,27 @@ For Any Dispo, these modules should capture:
 Memory output may add review pressure, missing nodes, falsifiers, and suggested
 review actions. It may not emit "safe to discharge," "unnecessary admission,"
 or any autonomous disposition order.
+
+## Cognitive Bias Field
+
+`jre/cognitive_bias_field.py` turns reasoning risk into deterministic advisory
+review pressure. For Any Dispo it adds:
+
+- bias entropy score;
+- dominant bias factors such as premature closure, overconfidence, confirmation
+  pressure, destination prototype mismatch, and status quo pressure;
+- information-gain ranking for blockers, capability gaps, missing evidence, and
+  near-miss falsifiers;
+- hypothesis survival for proposed destination, lower-acuity path, and
+  higher-acuity benefit;
+- disposition fragility by re-running small perturbations of follow-up,
+  caregiver support, destination capability, unresolved red flags, and
+  near-threshold vitals;
+- cognitive friction actions such as requiring disconfirming facts, objective
+  data, falsifiers, uncertainty-preserving language, or fresh-eyes review.
+
+The field is not a clinician-bias accusation and not a clinical probability
+model. It cannot lower a guardrail or authorize disposition.
 
 ## Data Contract Direction
 

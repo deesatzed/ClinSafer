@@ -1,6 +1,6 @@
 # Methodology Index
 
-This repository now contains seven related but distinct methodology layers.
+This repository now contains eight related but distinct methodology layers.
 
 ## 1. Judgment Readiness
 
@@ -142,7 +142,30 @@ Method:
 - Keep all memory output downstream of deterministic JRE/BSG/Any Dispo
   validators and governance.
 
-## 6. Empirical Boundary Learning
+## 6. Cognitive Bias Field
+
+Primary files:
+
+- `jre/cognitive_bias_field.py`
+- `jre/reasoning_integrity.py`
+- `jre/any_disposition.py`
+
+Method:
+
+- Treat cognitive bias as advisory uncertainty pressure, not as a clinician
+  accusation or diagnosis.
+- Convert JRE, BSG, reasoning-integrity, Any Dispo, trace, and memory outputs
+  into bias entropy, dominant bias factors, information-gain candidates,
+  hypothesis survival, disposition fragility, cognitive friction, and fresh-eyes
+  payloads.
+- Rank next evidence by whether it can change the action or disposition
+  boundary, not by whether it confirms the current frame.
+- Detect fragile disposition states by perturbing follow-up, caregiver support,
+  destination capability, unresolved red flags, and near-threshold vitals.
+- Preserve the invariant that this layer can only increase caution or require
+  disconfirming evidence; it cannot clear guardrails or order disposition.
+
+## 7. Empirical Boundary Learning
 
 Primary files:
 
@@ -162,7 +185,7 @@ Method:
 - Add selective/conformal thresholds so the empirical layer can say "review" or
   "abstain," but cannot override deterministic guardrails.
 
-## 7. Governed Medical Knowledge Acquisition
+## 8. Governed Medical Knowledge Acquisition
 
 Primary files:
 
@@ -189,6 +212,8 @@ Method:
 - Source conflicts remain visible.
 - Outcome fields are not allowed to leak into snapshot scoring.
 - Memory or prior cases may suggest review targets; they may not authorize care.
+- Cognitive bias field outputs may require friction or fresh-eyes review; they
+  may not diagnose clinicians or authorize care.
 - Governance is required before learned rules change production behavior.
 - Empirical models and retrieved medical facts can make the system more
   conservative before validation; they cannot loosen autonomy boundaries without
