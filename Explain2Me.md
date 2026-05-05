@@ -143,12 +143,19 @@
   ---
   6. Forward-Looking Claims
 
-  The core JRE, BSG, DHSE benchmark layer, experience memory, API, dashboards, and interactive demo are implemented.
+  The core JRE, BSG, DHSE benchmark layer, Any Dispo review engine,
+  cognitive-bias field backend, experience memory, API, dashboards, and
+  interactive demo are implemented.
 
-  The new mitigation architecture intentionally distinguishes implemented features from proposed next layers:
+  The new mitigation architecture intentionally distinguishes implemented
+  features from proposed next layers:
 
-  - Implemented now: deterministic controls, feedback memory, interview mitigation panel, autonomy caps, final recommendations panel.
-  - Planned next: stigmergic boundary trace, VAMS/Hopfield near-miss recall, dynamic template promotion, falsifier planning, and governance dashboard.
+  - Implemented now: deterministic controls, feedback memory, interview
+    mitigation panel, autonomy caps, final recommendations panel, advisory
+    boundary traces, near-miss recall, Any Dispo review, and backend
+    cognitive-bias field reports.
+  - Planned next: API/UI surfacing for cognitive-bias field details, dynamic
+    template promotion, persistence, and governance dashboard.
 
   These are not presented as already clinically validated or production-ready. They are the roadmap for making the current app smarter while preserving governance.
 

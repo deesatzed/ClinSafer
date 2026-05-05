@@ -240,12 +240,18 @@ Expected proof behavior:
 
 - the hero refill case is capped, blocks autonomous refill, lights up boundary traces, and recalls a refill near-miss pattern;
 - the clean refill control is allowed with audit, has no blocked actions, and recalls a clean refill analogue;
-- both cases include the five mitigation layers:
+- both cases include the visible mitigation layers:
   - current deterministic controls,
   - stigmergic boundary trace,
   - VAMS near-miss recall,
   - governed template promotion,
   - business mitigation.
+
+The backend now also includes `jre/cognitive_bias_field.py`, which can attach
+advisory bias entropy, information-gain ranking, hypothesis survival,
+disposition fragility, fresh-eyes payloads, and cognitive friction actions to
+JRE/Any Dispo analysis. This layer is not a clinician-bias diagnosis and cannot
+authorize care.
 
 ## Implementation Order
 
@@ -254,15 +260,18 @@ Expected proof behavior:
 3. Add a deterministic `ClinicalBoundaryEncoder`.
 4. Seed synthetic near-miss memories for VAMS-style recall in the Any Dispo path.
 5. Wire `BoundaryTraceField` into per-case and cross-case review traces.
-6. Add falsifier planning.
-7. Add clinician feedback capture tied to memory acceptance/rejection.
-8. Add governance queue for proposed rules/templates.
-9. Add dashboard metrics for:
+6. Add backend cognitive-bias field reports for bias entropy, fresh-eyes review,
+   disposition fragility, and cognitive friction prompts.
+7. Surface cognitive-bias field output in the API/demo UI.
+8. Add clinician feedback capture tied to memory acceptance/rejection.
+9. Add governance queue for proposed rules/templates.
+10. Add dashboard metrics for:
    - avoidable routing,
    - clarification yield,
    - abandonment after risk,
    - confirmed near misses,
    - false-positive recalls,
+   - bias-fragility and cognitive-friction triggers,
    - template-promotion outcomes.
 
 ## Interview Line

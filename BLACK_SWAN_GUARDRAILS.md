@@ -146,7 +146,9 @@ A production system could extend this prototype by adding:
 - adversarial-input isolation,
 - stigmergic boundary traces for source conflict, stale data, social/workflow risk, and nonresponse,
 - VAMS-style associative near-miss memory with Hebbian/anti-Hebbian feedback,
-- falsifier planning to show what evidence would change the autonomy cap,
+- cognitive-bias field reporting for bias entropy, hypothesis survival,
+  information-gain ranking, disposition fragility, fresh-eyes review, and
+  cognitive friction prompts,
 - near-miss review and governed rule/template updating,
 - calibration of autonomy-tier thresholds from outcome data.
 
@@ -154,14 +156,20 @@ The key product point: the guardrail layer is not an add-on. It becomes the **sa
 
 ## Mitigation update
 
-The updated demo includes a `Mitigation Plan` panel. It shows how each analyzed case is handled across five layers:
+The updated implementation includes a backend cognitive-bias field in addition
+to the `Mitigation Plan` panel. The mitigation view explains how each analyzed
+case is handled across six layers:
 
 1. Current deterministic controls.
 2. Stigmergic boundary trace.
 3. VAMS near-miss recall.
-4. Governed template promotion.
-5. Business mitigation.
+4. Cognitive-bias field / fresh-eyes review.
+5. Governed template promotion.
+6. Business mitigation.
 
 This is the cleanest way to explain the next step:
 
-> The guardrail detects assumption failure today. The mitigation layer learns which assumption failures recur, which ones create near misses, and which ones deserve governed promotion into the expert system.
+> The guardrail detects assumption failure today. The cognitive-bias field turns
+> reasoning fragility into explicit review pressure, while the mitigation layer
+> learns which assumption failures recur, which ones create near misses, and
+> which ones deserve governed promotion into the expert system.
