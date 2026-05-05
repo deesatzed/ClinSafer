@@ -12,23 +12,26 @@ python interactive_demo.py
 Open:
 
 ```text
-http://localhost:8001
+http://localhost:8001/       public landing page
+http://localhost:8001/demo   interactive demo app
 ```
 
 Open `FINAL_INTERVIEW_READINESS.md` first for the current talk track.
 
 Recommended live path:
 
-1. Overview.
-2. `Show Cost-Fear Case` or `Run Hero Refill Case`.
-3. Optional: `Paste Transcript` with real encounter text.
-4. `Analyze This Encounter`.
-5. `Statement vs Fact`.
-6. `Provenance & Authority`.
-7. `Known Unknowns Map`.
-8. `Autonomy Boundary`.
-9. `Final Recommendations`.
-10. Governance Review only if there is time.
+1. Start at the public landing page to frame ClinSafer as Any Dispo Judgment Readiness.
+2. Click `Launch Interactive Demo`.
+3. Overview.
+4. `Show Cost-Fear Case` or `Run Hero Refill Case`.
+5. Optional: `Paste Transcript` with real encounter text.
+6. `Analyze This Encounter`.
+7. `Statement vs Fact`.
+8. `Provenance & Authority`.
+9. `Known Unknowns Map`.
+10. `Autonomy Boundary`.
+11. `Final Recommendations`.
+12. Governance Review only if there is time.
 
 Classic CLI/static demo:
 

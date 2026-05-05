@@ -5367,7 +5367,761 @@ refreshExperience();
 </html>"""
 
 
+def _build_landing_html() -> str:
+    return """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ClinSafer - Any Disposition Judgment Readiness</title>
+<style>
+:root {
+    --ink: #14201f;
+    --muted: #5f6f71;
+    --line: #d8e2df;
+    --paper: #f7fbf8;
+    --white: #ffffff;
+    --teal: #0c8075;
+    --blue: #245f9e;
+    --amber: #bf7c1f;
+    --red: #a73d3d;
+    --dark: #102423;
+    --dark-2: #183332;
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+    margin: 0;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    color: var(--ink);
+    background: var(--paper);
+    line-height: 1.55;
+}
+
+a { color: inherit; }
+
+.topbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    min-height: 72px;
+    padding: 0 32px;
+    background: rgba(247, 251, 248, 0.94);
+    border-bottom: 1px solid var(--line);
+    backdrop-filter: blur(14px);
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-weight: 800;
+    letter-spacing: 0;
+    text-decoration: none;
+}
+
+.mark {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    display: grid;
+    place-items: center;
+    color: white;
+    background: var(--teal);
+    font-size: 13px;
+}
+
+.topnav {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    color: #3e4d4e;
+    font-size: 14px;
+}
+
+.topnav a {
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.nav-cta {
+    padding: 9px 13px;
+    border-radius: 6px;
+    background: var(--ink);
+    color: white;
+}
+
+.hero {
+    position: relative;
+    min-height: 86vh;
+    overflow: hidden;
+    color: white;
+    background: var(--dark);
+    border-bottom: 1px solid #203b39;
+}
+
+.hero-grid {
+    position: absolute;
+    inset: 0;
+    opacity: 0.28;
+    background-image:
+        linear-gradient(#24413f 1px, transparent 1px),
+        linear-gradient(90deg, #24413f 1px, transparent 1px);
+    background-size: 42px 42px;
+}
+
+.dashboard-visual {
+    position: absolute;
+    right: max(24px, 4vw);
+    top: 116px;
+    width: min(540px, 42vw);
+    min-height: 430px;
+    padding: 18px;
+    border: 1px solid rgba(207, 236, 230, 0.24);
+    border-radius: 8px;
+    background: #132e2d;
+    box-shadow: 0 28px 80px rgba(0, 0, 0, 0.32);
+}
+
+.visual-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding-bottom: 14px;
+    color: #cde5e0;
+    font-size: 12px;
+    border-bottom: 1px solid rgba(207, 236, 230, 0.16);
+}
+
+.signal-stack {
+    display: grid;
+    grid-template-columns: 1.2fr 0.8fr;
+    gap: 14px;
+    padding-top: 16px;
+}
+
+.visual-panel {
+    min-height: 116px;
+    padding: 14px;
+    border: 1px solid rgba(207, 236, 230, 0.16);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.045);
+}
+
+.visual-panel h3 {
+    margin: 0 0 12px;
+    color: #f0fbf8;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.meter {
+    display: grid;
+    gap: 8px;
+}
+
+.meter span {
+    display: block;
+    height: 8px;
+    border-radius: 999px;
+    background: #30504e;
+    overflow: hidden;
+}
+
+.meter span::before {
+    content: "";
+    display: block;
+    height: 100%;
+    width: var(--w);
+    background: var(--c);
+}
+
+.trace-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 0;
+    color: #d8ede9;
+    font-size: 12px;
+    border-bottom: 1px solid rgba(207, 236, 230, 0.1);
+}
+
+.trace-row strong {
+    color: white;
+    font-weight: 700;
+}
+
+.hero-content {
+    position: relative;
+    z-index: 3;
+    width: min(1160px, calc(100% - 48px));
+    margin: 0 auto;
+    padding: 120px 0 72px;
+}
+
+.eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 24px;
+    color: #b8ddd8;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.eyebrow::before {
+    content: "";
+    width: 34px;
+    height: 2px;
+    background: #4fc0b1;
+}
+
+.hero h1 {
+    max-width: 640px;
+    margin: 0;
+    font-size: clamp(44px, 6vw, 78px);
+    line-height: 0.98;
+    letter-spacing: 0;
+}
+
+.hero-copy {
+    max-width: 610px;
+    margin: 24px 0 0;
+    color: #d9e8e5;
+    font-size: clamp(18px, 2vw, 22px);
+}
+
+.hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-top: 34px;
+}
+
+.button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 48px;
+    padding: 0 18px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    font-weight: 800;
+    text-decoration: none;
+}
+
+.button.primary {
+    color: #0d2422;
+    background: #83eadc;
+}
+
+.button.secondary {
+    color: white;
+    border-color: rgba(255, 255, 255, 0.34);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.hero-proof {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+    width: min(650px, 100%);
+    margin-top: 58px;
+}
+
+.proof-item {
+    padding: 14px;
+    border: 1px solid rgba(207, 236, 230, 0.2);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.055);
+}
+
+.proof-item strong {
+    display: block;
+    margin-bottom: 4px;
+    color: white;
+    font-size: 18px;
+}
+
+.proof-item span {
+    color: #c8dfdc;
+    font-size: 13px;
+}
+
+.section {
+    padding: 72px 32px;
+}
+
+.section.alt {
+    background: white;
+    border-block: 1px solid var(--line);
+}
+
+.inner {
+    width: min(1160px, 100%);
+    margin: 0 auto;
+}
+
+.section-title {
+    max-width: 780px;
+    margin-bottom: 34px;
+}
+
+.section-title h2 {
+    margin: 0 0 12px;
+    font-size: clamp(30px, 4vw, 48px);
+    line-height: 1.05;
+    letter-spacing: 0;
+}
+
+.section-title p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 18px;
+}
+
+.feature-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.feature-card {
+    min-height: 238px;
+    padding: 22px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: white;
+}
+
+.feature-card h3 {
+    margin: 0 0 10px;
+    font-size: 20px;
+    letter-spacing: 0;
+}
+
+.feature-card p {
+    margin: 0;
+    color: #526365;
+}
+
+.feature-code {
+    display: inline-grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    margin-bottom: 18px;
+    border-radius: 8px;
+    color: white;
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.code-teal { background: var(--teal); }
+.code-blue { background: var(--blue); }
+.code-amber { background: var(--amber); }
+.code-red { background: var(--red); }
+.code-dark { background: var(--ink); }
+.code-green { background: #477b3a; }
+
+.method-list {
+    display: grid;
+    gap: 12px;
+}
+
+.method-row {
+    display: grid;
+    grid-template-columns: 210px 1fr;
+    gap: 22px;
+    padding: 18px 0;
+    border-top: 1px solid var(--line);
+}
+
+.method-row:last-child {
+    border-bottom: 1px solid var(--line);
+}
+
+.method-row strong {
+    color: var(--ink);
+    font-size: 17px;
+}
+
+.method-row p {
+    margin: 0;
+    color: #536466;
+}
+
+.split {
+    display: grid;
+    grid-template-columns: 0.95fr 1.05fr;
+    gap: 42px;
+    align-items: start;
+}
+
+.check-list {
+    display: grid;
+    gap: 12px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.check-list li {
+    padding: 14px 16px;
+    border-left: 4px solid var(--teal);
+    background: #eef7f3;
+}
+
+.risk-band {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1px;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--line);
+}
+
+.risk-band div {
+    min-height: 148px;
+    padding: 18px;
+    background: white;
+}
+
+.risk-band strong {
+    display: block;
+    margin-bottom: 8px;
+}
+
+.risk-band span {
+    color: var(--muted);
+    font-size: 14px;
+}
+
+.cta-band {
+    color: white;
+    background: var(--dark-2);
+}
+
+.cta-box {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 28px;
+}
+
+.cta-box h2 {
+    margin: 0 0 10px;
+    font-size: clamp(30px, 4vw, 46px);
+    line-height: 1.05;
+}
+
+.cta-box p {
+    max-width: 720px;
+    margin: 0;
+    color: #c9dfdb;
+}
+
+.footer {
+    padding: 28px 32px;
+    color: #657476;
+    background: #eef4f1;
+    border-top: 1px solid var(--line);
+    font-size: 13px;
+}
+
+.footer .inner {
+    display: flex;
+    justify-content: space-between;
+    gap: 18px;
+}
+
+@media (max-width: 1180px) {
+    .topbar {
+        position: static;
+        align-items: flex-start;
+        flex-direction: column;
+        padding: 18px 22px;
+    }
+
+    .topnav {
+        width: 100%;
+        overflow-x: auto;
+        padding-bottom: 4px;
+    }
+
+    .dashboard-visual {
+        position: relative;
+        top: auto;
+        right: auto;
+        width: min(100% - 44px, 680px);
+        min-height: 360px;
+        margin: 0 auto 44px;
+    }
+
+    .hero-content {
+        width: min(100% - 44px, 760px);
+        padding: 64px 0 36px;
+    }
+
+    .hero-proof,
+    .feature-grid,
+    .risk-band,
+    .split {
+        grid-template-columns: 1fr;
+    }
+
+    .method-row {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    .cta-box {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}
+
+@media (max-width: 640px) {
+    .section {
+        padding: 54px 20px;
+    }
+
+    .hero h1 {
+        font-size: 42px;
+    }
+
+    .signal-stack {
+        grid-template-columns: 1fr;
+    }
+
+    .hero-actions {
+        flex-direction: column;
+    }
+
+    .button {
+        width: 100%;
+    }
+
+    .footer .inner {
+        flex-direction: column;
+    }
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+    <a class="brand" href="/">
+        <span class="mark">CS</span>
+        <span>ClinSafer</span>
+    </a>
+    <nav class="topnav" aria-label="Primary navigation">
+        <a href="#methodologies">Methodologies</a>
+        <a href="#validation">Validation</a>
+        <a href="#breakthrough">Why now</a>
+        <a class="nav-cta" href="/demo">Launch Demo</a>
+    </nav>
+</header>
+
+<main>
+    <section class="hero">
+        <div class="hero-grid" aria-hidden="true"></div>
+        <div class="hero-content">
+            <div class="eyebrow">Any disposition safety intelligence</div>
+            <h1>Judgment readiness for the AI healthcare era.</h1>
+            <p class="hero-copy">
+                ClinSafer turns clinical uncertainty into inspectable boundaries, red flags, bias checks,
+                and escalation logic before an AI system, care team, or workflow overreaches.
+            </p>
+            <div class="hero-actions">
+                <a class="button primary" href="/demo">Launch Interactive Demo</a>
+                <a class="button secondary" href="#methodologies">Review Methodology</a>
+            </div>
+            <div class="hero-proof" aria-label="Core capabilities">
+                <div class="proof-item"><strong>Any Dispo</strong><span>Admission, discharge, observe, transfer, consult, follow-up.</span></div>
+                <div class="proof-item"><strong>JRE</strong><span>Judgment Readiness Engine with autonomy limits.</span></div>
+                <div class="proof-item"><strong>BSG</strong><span>Black Swan Guardrails for rare but costly misses.</span></div>
+                <div class="proof-item"><strong>CBF</strong><span>Cognitive Bias Field review before action.</span></div>
+            </div>
+        </div>
+        <aside class="dashboard-visual" aria-label="ClinSafer judgment readiness dashboard preview">
+            <div class="visual-bar">
+                <span>Boundary Trace - ED chest pain transcript</span>
+                <strong>Advisory Only</strong>
+            </div>
+            <div class="signal-stack">
+                <div class="visual-panel">
+                    <h3>Disposition Readiness</h3>
+                    <div class="meter">
+                        <span style="--w: 64%; --c: #83eadc"></span>
+                        <span style="--w: 42%; --c: #f0b85a"></span>
+                        <span style="--w: 78%; --c: #6fa8dc"></span>
+                        <span style="--w: 31%; --c: #d96c6c"></span>
+                    </div>
+                </div>
+                <div class="visual-panel">
+                    <h3>Red Flag Pressure</h3>
+                    <div class="trace-row"><span>Missing vitals</span><strong>High</strong></div>
+                    <div class="trace-row"><span>Risk standard</span><strong>Check</strong></div>
+                    <div class="trace-row"><span>Follow-up fragility</span><strong>Medium</strong></div>
+                </div>
+                <div class="visual-panel">
+                    <h3>Bias Field</h3>
+                    <div class="trace-row"><span>Premature closure</span><strong>Raised</strong></div>
+                    <div class="trace-row"><span>Anchoring</span><strong>Watch</strong></div>
+                    <div class="trace-row"><span>Dispo momentum</span><strong>Raised</strong></div>
+                </div>
+                <div class="visual-panel">
+                    <h3>System Output</h3>
+                    <div class="trace-row"><span>AI autonomy</span><strong>Limited</strong></div>
+                    <div class="trace-row"><span>Needed next step</span><strong>Human review</strong></div>
+                    <div class="trace-row"><span>Reason</span><strong>Visible</strong></div>
+                </div>
+            </div>
+        </aside>
+    </section>
+
+    <section class="section alt" id="breakthrough">
+        <div class="inner split">
+            <div class="section-title">
+                <h2>Not another AI doctor. A safety layer for uncertainty.</h2>
+                <p>
+                    The breakthrough is not pretending the model always knows. It is making uncertainty operational:
+                    what is missing, what could be catastrophically wrong, what bias may be present, and when autonomy
+                    must narrow.
+                </p>
+            </div>
+            <ul class="check-list">
+                <li>Separates clinical reasoning support from disposition authority.</li>
+                <li>Converts vague concern into auditable guardrails and missing-data questions.</li>
+                <li>Supports inverse use cases: patients admitted who may be safe for home only after boundary checks pass.</li>
+                <li>Creates reusable traces for governance, QA, model evaluation, and expert review.</li>
+            </ul>
+        </div>
+    </section>
+
+    <section class="section" id="methodologies">
+        <div class="inner">
+            <div class="section-title">
+                <h2>Methodologies built into the platform.</h2>
+                <p>
+                    ClinSafer combines deterministic safety engineering, uncertainty modeling, medical knowledge governance,
+                    and human-factor review into one disposition-readiness workflow.
+                </p>
+            </div>
+            <div class="feature-grid">
+                <article class="feature-card">
+                    <span class="feature-code code-teal">JRE</span>
+                    <h3>Judgment Readiness Engine</h3>
+                    <p>Scores whether enough reliable information exists to support a bounded next step, rather than forcing a premature answer.</p>
+                </article>
+                <article class="feature-card">
+                    <span class="feature-code code-red">BSG</span>
+                    <h3>Black Swan Guardrails</h3>
+                    <p>Looks for rare, high-consequence failure modes that ordinary pattern matching can miss in common presentations.</p>
+                </article>
+                <article class="feature-card">
+                    <span class="feature-code code-amber">CBF</span>
+                    <h3>Cognitive Bias Field</h3>
+                    <p>Flags anchoring, premature closure, availability bias, confirmation bias, and disposition momentum in the case trace.</p>
+                </article>
+                <article class="feature-card">
+                    <span class="feature-code code-blue">AD</span>
+                    <h3>Any Dispo Design</h3>
+                    <p>Works across discharge, admission, observation, transfer, consult, and follow-up instead of optimizing only one endpoint.</p>
+                </article>
+                <article class="feature-card">
+                    <span class="feature-code code-green">CUG</span>
+                    <h3>Clinical Uncertainty Graph</h3>
+                    <p>Maps symptoms, gaps, provenance, red flags, and next questions so uncertainty has structure the team can inspect.</p>
+                </article>
+                <article class="feature-card">
+                    <span class="feature-code code-dark">ML</span>
+                    <h3>Empirical Model Layer</h3>
+                    <p>Designed to add TabPFN, conformal prediction, imbalance-aware metrics, and calibration studies without replacing safety logic.</p>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <section class="section alt" id="validation">
+        <div class="inner">
+            <div class="section-title">
+                <h2>Built to test what matters before deployment.</h2>
+                <p>
+                    The landing demo lets teams run transcripts and synthetic cases, inspect the reasoning boundary, and see where the system refuses
+                    to overstate certainty. That makes product testing, expert review, and clinical governance possible from the same interface.
+                </p>
+            </div>
+            <div class="risk-band" aria-label="Validation targets">
+                <div><strong>Safety</strong><span>Does it catch red flags and force the right uncertainty posture?</span></div>
+                <div><strong>Equity</strong><span>Does performance hold with sparse, noisy, imbalanced, or vulnerable-population data?</span></div>
+                <div><strong>Governance</strong><span>Can every boundary, warning, and escalation be traced and reviewed?</span></div>
+                <div><strong>Generalization</strong><span>Does it work across disposition types, not just admit-versus-discharge?</span></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section">
+        <div class="inner">
+            <div class="section-title">
+                <h2>Medical knowledge without pretending to be the clinician.</h2>
+                <p>
+                    The architecture can save precise guideline questions, expert-reviewed red flags, and monitored knowledge checks as governed
+                    artifacts. Models can help retrieve and draft specifics, while the product keeps final clinical authority outside the AI.
+                </p>
+            </div>
+            <div class="method-list">
+                <div class="method-row"><strong>Knowledge packets</strong><p>Reusable, versioned facts for red flags, standards, contraindications, and guideline thresholds.</p></div>
+                <div class="method-row"><strong>Expert review loop</strong><p>Clinical SMEs can approve, reject, annotate, and retire packets as evidence changes.</p></div>
+                <div class="method-row"><strong>Boundary-first output</strong><p>The system says what it can and cannot support, then points to missing information and escalation needs.</p></div>
+                <div class="method-row"><strong>Audit memory</strong><p>Near misses, false reassurance, bias signals, and uncertainty failures become retrievable improvement data.</p></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section cta-band">
+        <div class="inner cta-box">
+            <div>
+                <h2>Test the safety layer now.</h2>
+                <p>
+                    Open the demo, choose a case or paste a transcript, and inspect how ClinSafer handles missing data,
+                    red flags, cognitive bias, autonomy boundaries, and any-disposition readiness.
+                </p>
+            </div>
+            <a class="button primary" href="/demo">Launch Interactive Demo</a>
+        </div>
+    </section>
+</main>
+
+<footer class="footer">
+    <div class="inner">
+        <span>ClinSafer Judgment Readiness Engine</span>
+        <span>Research and advisory workflow only. Not a medical device or autonomous clinical decision maker.</span>
+    </div>
+</footer>
+</body>
+</html>"""
+
+
 @app.get("/", response_class=HTMLResponse)
+def serve_landing_page():
+    """Serve the public landing page."""
+    return HTMLResponse(content=_build_landing_html())
+
+
+@app.get("/demo", response_class=HTMLResponse)
+@app.get("/demo/", response_class=HTMLResponse, include_in_schema=False)
 def serve_interactive_page():
     """Serve the interactive demo HTML page."""
     return HTMLResponse(content=_build_interactive_html())

@@ -142,6 +142,7 @@ What is real now:
    - Write pilot readout: cohort flow, label prevalence, leakage review, model results, and error analysis.
 
 14. Add browser E2E tests for interactive demo.
+   - Landing page renders at `/` with launch links to `/demo`.
    - Transcript paste.
    - Analyze flow.
    - Clinical Uncertainty Graph section rendering.
@@ -152,7 +153,7 @@ What is real now:
    - Confirm local tests.
    - Confirm secrets are present.
    - Deploy to Fly.
-   - Smoke `/`, `/demo/analyze`, and any live LLM endpoint if enabled.
+   - Smoke `/`, `/demo`, `/demo/analyze`, and any live LLM endpoint if enabled.
 
 ## Data Collection TODO
 

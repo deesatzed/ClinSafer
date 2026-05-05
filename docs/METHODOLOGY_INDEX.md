@@ -2,6 +2,11 @@
 
 This repository now contains eight related but distinct methodology layers.
 
+The public app route (`/`) now presents these layers as a landing page for
+testing, promotion, and stakeholder review. The working demo remains available
+at `/demo`, so reviewers can move from the methodology narrative into live
+case and transcript testing without losing the safety framing.
+
 ## 1. Judgment Readiness
 
 Primary files:

@@ -28,6 +28,7 @@ JRE evaluates a clinical intake transcript and returns:
 6. **Rule traces** — why the module flagged something, for governance and trust.
 7. **Black Swan Guardrail state** — whether assumptions failed and how far autonomy is allowed to proceed.
 8. **Mitigation plan** — immediate controls plus implemented advisory boundary traces, VAMS-style near-miss recall, governed template promotion, and churn/routing reduction.
+9. **Public landing page** — promotional and testing entrypoint that explains the Any Dispo, Cognitive Bias Field, Clinical Uncertainty Graph, Black Swan, governed knowledge, and empirical-model roadmap before launching the demo.
 
 ---
 
@@ -121,10 +122,18 @@ python interactive_demo.py
 # Runs at http://localhost:8001
 ```
 
+Local routes:
+
+```text
+http://localhost:8001/       Public landing page for testing and promotion
+http://localhost:8001/demo   Interactive ClinSafer demo app
+```
+
 Live Fly deployment:
 
 ```text
-https://clinsafer.fly.dev/
+https://clinsafer.fly.dev/       Public landing page
+https://clinsafer.fly.dev/demo   Interactive demo app
 ```
 
 Final interview readiness write-up:

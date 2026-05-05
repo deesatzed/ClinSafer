@@ -102,13 +102,32 @@ def _section(data, section_id: str):
 class TestPageServing:
     """Verify the HTML page is served correctly."""
 
-    def test_page_returns_html(self):
+    def test_landing_page_returns_html(self):
         resp = client.get("/")
         assert resp.status_code == 200
         assert "text/html" in resp.headers["content-type"]
 
-    def test_page_contains_all_five_screens(self):
+    def test_landing_page_promotes_core_features(self):
         resp = client.get("/")
+        html = resp.text
+        assert "Judgment readiness for the AI healthcare era" in html
+        assert "Any Dispo" in html
+        assert "Judgment Readiness Engine" in html
+        assert "Black Swan Guardrails" in html
+        assert "Cognitive Bias Field" in html
+        assert "Clinical Uncertainty Graph" in html
+        assert "TabPFN" in html
+        assert 'href="/demo"' in html
+        assert "Not another AI doctor" in html
+        assert "Not a medical device" in html
+
+    def test_demo_page_returns_html(self):
+        resp = client.get("/demo")
+        assert resp.status_code == 200
+        assert "text/html" in resp.headers["content-type"]
+
+    def test_page_contains_all_five_screens(self):
+        resp = client.get("/demo")
         html = resp.text
         assert 'id="screen-overview"' in html
         assert 'id="screen-cases"' in html
@@ -118,7 +137,7 @@ class TestPageServing:
         assert 'id="screen-learning"' in html
 
     def test_page_contains_js_functions(self):
-        resp = client.get("/")
+        resp = client.get("/demo")
         html = resp.text
         assert "function showScreen" in html
         assert "function analyzeEncounter" in html
@@ -136,7 +155,7 @@ class TestPageServing:
         assert "function suggestCase" in html
 
     def test_page_contains_navigation(self):
-        resp = client.get("/")
+        resp = client.get("/demo")
         html = resp.text
         assert 'id="nav-overview"' in html
         assert 'id="nav-cases"' in html
@@ -149,7 +168,7 @@ class TestPageServing:
         assert "Governance" in html
 
     def test_encounter_page_has_live_edit_controls(self):
-        resp = client.get("/")
+        resp = client.get("/demo")
         html = resp.text
         assert "Live encounter input" in html
         assert "Add Dialogue" in html
@@ -165,7 +184,7 @@ class TestPageServing:
         assert "parseTranscriptServer" in html
 
     def test_custom_builder_exposes_top_telemedicine_domains(self):
-        resp = client.get("/")
+        resp = client.get("/demo")
         html = resp.text
         for domain in [
             "mental_health",
@@ -178,7 +197,7 @@ class TestPageServing:
             assert html.count(f'value="{domain}"') >= 2
 
     def test_page_contains_css(self):
-        resp = client.get("/")
+        resp = client.get("/demo")
         html = resp.text
         assert "<style>" in html
         assert "--bg:" in html

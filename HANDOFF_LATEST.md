@@ -1,9 +1,9 @@
 # ClinSafer / Judgment Readiness Engine Handoff
 
-**Updated:** 2026-04-28
+**Updated:** 2026-05-05
 **Repo:** `https://github.com/deesatzed/ClinSafer.git`
 **Live app:** `https://clinsafer.fly.dev/`
-**Latest feature commit:** `2c42f15 Add reasoning integrity bias guard`
+**Latest feature:** Public landing page plus `/demo` interactive app route
 
 This is an interview/demo artifact, not a clinical protocol, medical device, or
 production triage system.
@@ -43,6 +43,9 @@ The core safety invariant is:
 - Human-factor boundaries for embarrassment, stigma, fear-curated history,
   somatic amplification, reassurance seeking, stoic minimization, and denial.
 - Final Recommendations page focused on actionable clinician/patient output.
+- Public landing page at `/` for testing, promotion, and explaining why the
+  Any Dispo Judgment Readiness methodology matters in AI healthcare.
+- Interactive app route at `/demo`.
 - Bounded multi-role LLM candidate pipeline through OpenRouter.
 - Governance review and in-memory feedback/experience prototype.
 - Fly deployment.
