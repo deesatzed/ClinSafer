@@ -93,6 +93,12 @@ from .empirical_uncertainty import (
     write_feature_csv,
 )
 from .synthetic_data import BASE_CASES
+from .skill_router import (
+    MedicalSkillCard,
+    SkillRecommendation,
+    recommend_medical_skills,
+    recommend_skills_for_case,
+)
 
 __all__ = [
     "JudgmentReadinessEngine",
@@ -179,4 +185,8 @@ __all__ = [
     "review_budget_curve",
     "write_feature_csv",
     "BASE_CASES",
+    "MedicalSkillCard",
+    "SkillRecommendation",
+    "recommend_medical_skills",
+    "recommend_skills_for_case",
 ]
